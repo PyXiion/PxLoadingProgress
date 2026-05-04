@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Change loading time renderer to use finalizer patch to always show even if other mods mess with the 'DrawInfoInCorner' method.
+
 ### Fixed
 
 - Loading times of 1 hour or longer are now displayed correctly (e.g. `1:23:45` instead of `23:45`).
+- When the game is running, render the loading time in the main menu drawer instead of on top of the game tab bar.
 
 ## [0.9.6] - 2026-02-21
 

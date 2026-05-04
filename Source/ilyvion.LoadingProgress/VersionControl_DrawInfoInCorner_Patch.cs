@@ -7,26 +7,35 @@ internal static class VersionControl_DrawInfoInCorner_Patch
 {
     private static TimeSpan? _loadingTime;
 
-    internal static void Postfix()
+    internal static void Finalizer()
     {
         if (!LoadingProgressMod.Settings.ShowLastLoadingTimeInCorner)
         {
             return;
         }
 
+        if (Current.ProgramState != ProgramState.Entry)
+        {
+            // You are not in the main menu
+            return;
+        }
+
+        var rect = new Rect(UI.screenWidth - 10f, UI.screenHeight - 10f, 0, 0);
+        DrawLoadingTime(rect);
+    }
+
+    internal static void DrawLoadingTime(Rect rect)
+    {
         _loadingTime ??= TimeSpan.FromSeconds(LoadingProgressMod.Settings.LastLoadingTime);
         string text = "LoadingProgress.LoadingTime".Translate(
             Utilities.FormatDuration(_loadingTime.Value)
         );
         Text.Font = GameFont.Small;
         var vector = Text.CalcSize(text);
-
-        var rect = new Rect(
-            UI.screenWidth - vector.x - 10f,
-            UI.screenHeight - vector.y - 10f,
-            vector.x,
-            vector.y
-        );
+        rect.x -= vector.x;
+        rect.y -= vector.y;
+        rect.width += vector.x;
+        rect.height += vector.y;
         LabelOutline(rect, text, Color.white, Color.black.ToTransparent(0.5f));
         if (Mouse.IsOver(rect))
         {
