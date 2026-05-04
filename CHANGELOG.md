@@ -7,13 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The loading time estimate is now based on a weighted average of the last N recorded load times (default 10) instead of only the most recent one. The 10 most recent launches are given progressively increasing weight (1× to 10×); older launches beyond those 10 all contribute equally at 1×, so no historical data is ever completely discarded.
+- A new setting controls how many previous load times to store (range 1–50, default 10). Its tooltip explains the weighted average scheme in plain language.
+- The loading screen now shows a small 'estimate based on N previous game launches' label so players know how many data points the current estimate draws from.
+
 ### Changed
 
 - Change loading time renderer to use finalizer patch to always show even if other mods mess with the 'DrawInfoInCorner' method.
 
 ### Fixed
 
-- Loading times of 1 hour or longer are now displayed correctly (e.g. `1:23:45` instead of `23:45`).
+- Loading times of 1 hour or longer are now displayed correctly (e.g. '1:23:45' instead of '23:45').
 - When the game is running, render the loading time in the main menu drawer instead of on top of the game tab bar.
 
 ## [0.9.6] - 2026-02-21

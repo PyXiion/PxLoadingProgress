@@ -26,7 +26,9 @@ internal static class VersionControl_DrawInfoInCorner_Patch
 
     internal static void DrawLoadingTime(Rect rect)
     {
-        _loadingTime ??= TimeSpan.FromSeconds(LoadingProgressMod.Settings.LastLoadingTime);
+        _loadingTime ??= TimeSpan.FromSeconds(
+            LoadingProgressMod.Settings.AverageLoadingTime!.Value
+        );
         string text = "LoadingProgress.LoadingTime".Translate(
             Utilities.FormatDuration(_loadingTime.Value)
         );

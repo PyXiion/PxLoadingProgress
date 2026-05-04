@@ -14,6 +14,10 @@ internal sealed partial class LoadingProgressWindow
             if (LoadingProgressMod.Settings.ShowLastLoadingTime)
             {
                 windowSize.y += 30f;
+                if (LoadingProgressMod.Settings.LoadingTimeSampleCount > 0)
+                {
+                    windowSize.y += Text.LineHeightOf(GameFont.Small) + VerticalWidgetMargin;
+                }
                 if (HasLastLoadAndHashChanged())
                 {
                     windowSize.y += Text.LineHeightOf(GameFont.Small) + VerticalWidgetMargin;
@@ -41,14 +45,15 @@ internal sealed partial class LoadingProgressWindow
 
     internal static void DrawContents(Rect rect)
     {
-        _loadingStopwatch ??= Stopwatch.StartNew();
-        _lastLoadingTime =
-            LoadingProgressMod.Settings.LastLoadingTime > 0
-                ? TimeSpan.FromSeconds(LoadingProgressMod.Settings.LastLoadingTime)
-                : null;
-        _currentModHash = StableListHasher.ComputeListHash(
-            LoadedModManager.RunningModsListForReading.Select(mod => mod.PackageId)
-        );
+        if (_loadingStopwatch is null)
+        {
+            _loadingStopwatch = Stopwatch.StartNew();
+            var avgTime = LoadingProgressMod.Settings.AverageLoadingTime;
+            _lastLoadingTime = avgTime.HasValue ? TimeSpan.FromSeconds(avgTime.Value) : null;
+            _currentModHash = StableListHasher.ComputeListHash(
+                LoadedModManager.RunningModsListForReading.Select(mod => mod.PackageId)
+            );
+        }
 
         Text.Font = GameFont.Medium;
         Text.Anchor = TextAnchor.UpperLeft;
@@ -159,6 +164,25 @@ internal sealed partial class LoadingProgressWindow
                 loadingTimeText = $"{Utilities.FormatDuration(elapsed)} / {lastLoadingTimeText}";
             }
             Widgets.Label(loadingTimeRect, loadingTimeText);
+
+            var sampleCount = LoadingProgressMod.Settings.LoadingTimeSampleCount;
+            if (sampleCount > 0)
+            {
+                Text.Font = GameFont.Small;
+                Text.Anchor = TextAnchor.MiddleCenter;
+                var sampleInfoRect = loadingTimeRect;
+                sampleInfoRect.y += loadingTimeRect.height + VerticalWidgetMargin;
+                sampleInfoRect.height = Text.LineHeight;
+                GUI.color = new Color(1f, 1f, 1f, 0.5f);
+                Widgets.Label(
+                    sampleInfoRect,
+                    sampleCount == 1
+                        ? Translations.GetTranslation("LoadingProgress.EstimateBasedOnSingle")
+                        : Translations.GetTranslation("LoadingProgress.EstimateBasedOn", sampleCount)
+                );
+                GUI.color = Color.white;
+                loadingTimeRect = sampleInfoRect;
+            }
 
             if (HasLastLoadAndHashChanged())
             {

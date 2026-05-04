@@ -1,5 +1,4 @@
 using System.Text;
-
 using LudeonTK;
 
 namespace ilyvion.LoadingProgress;
@@ -608,10 +607,27 @@ internal sealed partial class LoadingProgressWindow
                 CurrentStage = LoadingStage.Finished;
                 if (_loadingStopwatch is { } loadingStopwatch)
                 {
-                    LoadingProgressMod.Settings.LastLoadingTime = (float)
-                        loadingStopwatch.Elapsed.TotalSeconds;
-                    LoadingProgressMod.Settings.LastLoadingModHash = _currentModHash;
-                    LoadingProgressMod.Settings.Write();
+                    var elapsedSeconds = (float)loadingStopwatch.Elapsed.TotalSeconds;
+                    var settings = LoadingProgressMod.Settings;
+
+                    // Mod list changed: the existing list served as the estimate this load,
+                    // but we clear it so history reflects the new mod configuration.
+                    if (
+                        settings.ClearEstimatesOnModListChange
+                        && _currentModHash != settings.LastLoadingModHash
+                    )
+                    {
+                        settings.LoadingTimes.Clear();
+                    }
+
+                    settings.LoadingTimes.Add(elapsedSeconds);
+                    while (settings.LoadingTimes.Count > settings.LoadingTimesCapacity)
+                    {
+                        settings.LoadingTimes.RemoveAt(0);
+                    }
+
+                    settings.LastLoadingModHash = _currentModHash;
+                    settings.Write();
                     loadingStopwatch.Stop();
                     Translations.Clear();
                 }

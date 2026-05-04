@@ -37,6 +37,52 @@ internal sealed class Settings : ModSettings
         set => _lastLoadingModHash = value;
     }
 
+    private List<float> _loadingTimes = [];
+    public List<float> LoadingTimes => _loadingTimes;
+
+    public int LoadingTimeSampleCount => Math.Min(_loadingTimes.Count, _loadingTimesCapacity);
+
+    private int _loadingTimesCapacity = 10;
+    public int LoadingTimesCapacity
+    {
+        get => _loadingTimesCapacity;
+        set => _loadingTimesCapacity = value;
+    }
+
+    private bool _clearEstimatesOnModListChange = true;
+    public bool ClearEstimatesOnModListChange
+    {
+        get => _clearEstimatesOnModListChange;
+        set => _clearEstimatesOnModListChange = value;
+    }
+
+    // The 10 most-recent entries get decreasing weights 10→1; everything older gets weight 1.
+    // This means old entries are never squeezed out no matter how large the history grows.
+    private const int WeightSpread = 10;
+
+    public float? AverageLoadingTime
+    {
+        get
+        {
+            if (_loadingTimes.Count == 0)
+            {
+                return null;
+            }
+            var weightedSum = 0f;
+            var totalWeight = 0f;
+            var count = _loadingTimes.Count;
+            var startIdx = Math.Max(count - _loadingTimesCapacity, 0);
+            for (var i = startIdx; i < count; i++)
+            {
+                var distFromNewest = count - 1 - i;
+                var weight = Math.Max(WeightSpread - distFromNewest, 1f);
+                weightedSum += _loadingTimes[i] * weight;
+                totalWeight += weight;
+            }
+            return weightedSum / totalWeight;
+        }
+    }
+
     private bool _showLastLoadingTime = true;
     public bool ShowLastLoadingTime
     {
@@ -92,6 +138,28 @@ internal sealed class Settings : ModSettings
         );
         Scribe_Values.Look(ref _lastLoadingTime, "lastLoadingTime", -1f);
         Scribe_Values.Look(ref _lastLoadingModHash, "lastLoadingModHash", -1);
+        Scribe_Collections.Look(ref _loadingTimes, "loadingTimes", LookMode.Value);
+        _loadingTimes ??= [];
+        Scribe_Values.Look(ref _loadingTimesCapacity, "loadingTimesCapacity", 10);
+        Scribe_Values.Look(
+            ref _clearEstimatesOnModListChange,
+            "clearEstimatesOnModListChange",
+            true
+        );
+
+        if (
+            Scribe.mode == LoadSaveMode.LoadingVars
+            && _lastLoadingTime > 0
+            && _loadingTimes.Count == 0
+        )
+        {
+            // Migrate from old versions where only the last loading time was saved,
+            // to the new system where a history of loading times is saved.
+            // Put the last loading time into the history so it isn't lost,
+            // and so it can be used in the average loading time calculation.
+            _loadingTimes.Add(_lastLoadingTime);
+            _lastLoadingTime = -1f;
+        }
         Scribe_Values.Look(ref _showLastLoadingTime, "showLastLoadingTime", true);
         Scribe_Values.Look(ref _showLoadingTimeAsCountDown, "showLoadingTimeAsCountDown", false);
         Scribe_Values.Look(
@@ -129,6 +197,21 @@ internal sealed class Settings : ModSettings
             "LoadingProgress.LastLoadingTime".Translate(),
             ref _showLastLoadingTime,
             "LoadingProgress.LastLoadingTime.Tip".Translate()
+        );
+
+        _loadingTimesCapacity = (int)
+            listingStandard.SliderLabeled(
+                "LoadingProgress.LoadingTimesCapacity".Translate(_loadingTimesCapacity),
+                _loadingTimesCapacity,
+                1f,
+                50f,
+                tooltip: "LoadingProgress.LoadingTimesCapacity.Tip".Translate()
+            );
+
+        listingStandard.CheckboxLabeled(
+            "LoadingProgress.ClearEstimatesOnModListChange".Translate(),
+            ref _clearEstimatesOnModListChange,
+            "LoadingProgress.ClearEstimatesOnModListChange.Tip".Translate()
         );
 
         listingStandard.CheckboxLabeled(
