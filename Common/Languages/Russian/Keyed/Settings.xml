@@ -20,6 +20,11 @@
     <LoadingProgress.ShowFasterGameLoadingEarlyModContentLoading.Tip>Когда включено и Faster Game Loading активен, мод будет показывать дополнительный индикатор загрузки контента модов, загружаемого на раннем этапе запуска.</LoadingProgress.ShowFasterGameLoadingEarlyModContentLoading.Tip>
     <LoadingProgress.TrackStartupLoadingImpact>Отслеживать влияние модов на время запуска</LoadingProgress.TrackStartupLoadingImpact>
     <LoadingProgress.TrackStartupLoadingImpact.Tip>Когда включено, мод будет отслеживать влияние модов и базовой игры на время запуска, позволяя увидеть подробную разбивку причин задержек.</LoadingProgress.TrackStartupLoadingImpact.Tip>
+    <LoadingProgress.ProgressBarColor>Цвет полосы прогресса</LoadingProgress.ProgressBarColor>
+    <LoadingProgress.ProgressBarColor.Tip>Цвет основной полосы прогресса в окне загрузки.</LoadingProgress.ProgressBarColor.Tip>
+    <LoadingProgress.SmallBarColor>Цвет индикатора подэтапа</LoadingProgress.SmallBarColor>
+    <LoadingProgress.SmallBarColor.Tip>Цвет индикатора подэтапа на основной полосе прогресса в окне загрузки.</LoadingProgress.SmallBarColor.Tip>
+    <LoadingProgress.Reset>Сбросить</LoadingProgress.Reset>
     <LoadingProgress.LoadingWindowPlacement>Расположение окна загрузки</LoadingProgress.LoadingWindowPlacement>
     <LoadingProgress.Top>Сверху</LoadingProgress.Top>
     <LoadingProgress.Middle>По центру</LoadingProgress.Middle>

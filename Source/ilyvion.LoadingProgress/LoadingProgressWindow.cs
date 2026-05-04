@@ -92,6 +92,8 @@ internal sealed partial class LoadingProgressWindow
         var progressRect = loadingProgressRect;
         progressRect.y += loadingActivityRect.height + VerticalWidgetMargin;
         progressRect.height = ProgressBarHeight;
+        var barColor = LoadingProgressMod.Settings.ProgressBarColor;
+        var smallBarColor = LoadingProgressMod.Settings.SmallBarColor;
         if (StageProgress is (float currentValue, float maxValue))
         {
             Widgets_Progressbar.DrawHorizontalProgressBar(
@@ -99,7 +101,9 @@ internal sealed partial class LoadingProgressWindow
                 (int)CurrentStage,
                 (int)LoadingStage.Finished,
                 currentValue,
-                maxValue
+                maxValue,
+                barColor,
+                smallBarColor
             );
         }
         else
@@ -107,7 +111,8 @@ internal sealed partial class LoadingProgressWindow
             Widgets_Progressbar.DrawHorizontalProgressBar(
                 progressRect,
                 (int)CurrentStage,
-                (int)LoadingStage.Finished
+                (int)LoadingStage.Finished,
+                customBarColor: barColor
             );
         }
 
@@ -178,7 +183,10 @@ internal sealed partial class LoadingProgressWindow
                     sampleInfoRect,
                     sampleCount == 1
                         ? Translations.GetTranslation("LoadingProgress.EstimateBasedOnSingle")
-                        : Translations.GetTranslation("LoadingProgress.EstimateBasedOn", sampleCount)
+                        : Translations.GetTranslation(
+                            "LoadingProgress.EstimateBasedOn",
+                            sampleCount
+                        )
                 );
                 GUI.color = Color.white;
                 loadingTimeRect = sampleInfoRect;
@@ -201,7 +209,7 @@ internal sealed partial class LoadingProgressWindow
         Text.Anchor = TextAnchor.UpperLeft;
     }
 
-    private static readonly Color TimeBarColor = Widgets_Progressbar.BarColor.Darken(0.2f);
+    private static Color TimeBarColor => LoadingProgressMod.Settings.ProgressBarColor.Darken(0.2f);
     private static readonly Color TimerSmallBarColor = Color
         .white.Darken(0.2f)
         .ToTransparent(0.75f);

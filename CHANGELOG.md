@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A new setting controls how many previous load times to store (range 1–50, default 10). Its tooltip explains the weighted average scheme in plain language.
 - The loading screen now shows a small 'estimate based on N previous game launches' label so players know how many data points the current estimate draws from.
 - Added RimThemes as incompatible mod to About.xml
+- The colors of the main progress bar and its sub-stage indicator can now be customized in the settings. Each color opens a full HSV/RGB color picker dialog.
 
 ### Changed
 

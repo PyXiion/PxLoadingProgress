@@ -344,6 +344,43 @@ internal static class Utilities
         yield break;
     }
 
+    public static void ColorPicker(
+        this Listing_Standard listingStandard,
+        string labelKey,
+        string tipKey,
+        Color color,
+        Color defaultColor,
+        Action<Color> setColor
+    )
+    {
+        var row = listingStandard.GetRect(Text.LineHeight);
+        listingStandard.Gap(listingStandard.verticalSpacing);
+        var labelRect = row.LeftPart(0.6f);
+        var swatchRect = new Rect(
+            row.xMax - 50f - 34f, // 34 = 4px gap + 30px reset button width
+            row.y,
+            50f,
+            row.height
+        );
+        var resetRect = new Rect(swatchRect.xMax + 4f, row.y, 30f, row.height);
+        Text.Anchor = TextAnchor.MiddleLeft;
+        Widgets.Label(labelRect, labelKey.Translate());
+        Text.Anchor = TextAnchor.UpperLeft;
+        TooltipHandler.TipRegion(labelRect, tipKey.Translate());
+        Widgets.DrawBoxSolid(swatchRect, color);
+        Widgets.DrawBox(swatchRect);
+        if (Widgets.ButtonInvisible(swatchRect))
+        {
+            Find.WindowStack.Add(new ColorPicker.Dialog_ColorPicker(color, setColor));
+        }
+        TooltipHandler.TipRegion(swatchRect, tipKey.Translate());
+        if (Widgets.ButtonText(resetRect, "↺"))
+        {
+            setColor(defaultColor);
+        }
+        TooltipHandler.TipRegion(resetRect, "LoadingProgress.Reset".Translate());
+    }
+
     public static ReadOnlyDictionary<TKey, TValue> AsReadOnly<TKey, TValue>(
         this IDictionary<TKey, TValue> dictionary
     )

@@ -125,6 +125,20 @@ internal sealed class Settings : ModSettings
         set => _trackStartupLoadingImpact = value;
     }
 
+    private Color _progressBarColor = Widgets_Progressbar.BarColor;
+    public Color ProgressBarColor
+    {
+        get => _progressBarColor;
+        set => _progressBarColor = value;
+    }
+
+    private Color _smallBarColor = Widgets_Progressbar.SmallBarColor;
+    public Color SmallBarColor
+    {
+        get => _smallBarColor;
+        set => _smallBarColor = value;
+    }
+
     public override void ExposeData()
     {
         base.ExposeData();
@@ -174,6 +188,8 @@ internal sealed class Settings : ModSettings
             true
         );
         Scribe_Values.Look(ref _trackStartupLoadingImpact, "trackStartupLoadingImpact", false);
+        Scribe_Values.Look(ref _progressBarColor, "progressBarColor", Widgets_Progressbar.BarColor);
+        Scribe_Values.Look(ref _smallBarColor, "smallBarColor", Widgets_Progressbar.SmallBarColor);
     }
 
     public void DoSettingsWindowContents(Rect inRect)
@@ -242,6 +258,22 @@ internal sealed class Settings : ModSettings
             "LoadingProgress.TrackStartupLoadingImpact".Translate(),
             ref _trackStartupLoadingImpact,
             "LoadingProgress.TrackStartupLoadingImpact.Tip".Translate()
+        );
+
+        listingStandard.ColorPicker(
+            "LoadingProgress.ProgressBarColor",
+            "LoadingProgress.ProgressBarColor.Tip",
+            _progressBarColor,
+            Widgets_Progressbar.BarColor,
+            newColor => _progressBarColor = newColor
+        );
+
+        listingStandard.ColorPicker(
+            "LoadingProgress.SmallBarColor",
+            "LoadingProgress.SmallBarColor.Tip",
+            _smallBarColor,
+            Widgets_Progressbar.SmallBarColor,
+            newColor => _smallBarColor = newColor
         );
 
         if (
