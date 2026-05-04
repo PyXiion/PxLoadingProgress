@@ -133,7 +133,7 @@ internal sealed partial class LoadingProgressWindow
             }
 
             var lastLoadingTimeText = _lastLoadingTime.HasValue
-                ? $"~{_lastLoadingTime.Value:mm\\:ss}"
+                ? $"~{Utilities.FormatDuration(_lastLoadingTime.Value)}"
                 : "--:--";
             string loadingTimeText;
             if (LoadingProgressMod.Settings.ShowLoadingTimeAsCountDown)
@@ -145,18 +145,18 @@ internal sealed partial class LoadingProgressWindow
                     remainingTime > TimeSpan.Zero
                         ? Translations.GetTranslation(
                             "LoadingProgress.TimeRemaining",
-                            $"{remainingTime:mm\\:ss}",
+                            Utilities.FormatDuration(remainingTime),
                             lastLoadingTimeText
                         )
                         : Translations.GetTranslation(
                             "LoadingProgress.TimeOverEstimate",
-                            $"{remainingTime:mm\\:ss}",
+                            Utilities.FormatDuration(remainingTime),
                             lastLoadingTimeText
                         );
             }
             else
             {
-                loadingTimeText = $"{elapsed:mm\\:ss} / {lastLoadingTimeText}";
+                loadingTimeText = $"{Utilities.FormatDuration(elapsed)} / {lastLoadingTimeText}";
             }
             Widgets.Label(loadingTimeRect, loadingTimeText);
 

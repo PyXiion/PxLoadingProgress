@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Loading times of 1 hour or longer are now displayed correctly (e.g. `1:23:45` instead of `23:45`).
+
 ## [0.9.6] - 2026-02-21
 
 ### Added

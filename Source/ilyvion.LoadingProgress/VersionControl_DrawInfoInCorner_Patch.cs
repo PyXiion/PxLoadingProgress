@@ -16,7 +16,7 @@ internal static class VersionControl_DrawInfoInCorner_Patch
 
         _loadingTime ??= TimeSpan.FromSeconds(LoadingProgressMod.Settings.LastLoadingTime);
         string text = "LoadingProgress.LoadingTime".Translate(
-            _loadingTime.Value.ToString("mm\\:ss", CultureInfo.InvariantCulture)
+            Utilities.FormatDuration(_loadingTime.Value)
         );
         Text.Font = GameFont.Small;
         var vector = Text.CalcSize(text);

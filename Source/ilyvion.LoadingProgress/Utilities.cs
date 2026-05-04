@@ -201,6 +201,16 @@ internal static class Utilities
         return potentiallyProblematicPatches;
     }
 
+    public static string FormatDuration(TimeSpan t)
+    {
+        if (t < TimeSpan.Zero)
+        {
+            var abs = -t;
+            return abs.TotalHours >= 1 ? $"-{(int)abs.TotalHours}:{abs:mm\\:ss}" : $"{t:mm\\:ss}";
+        }
+        return t.TotalHours >= 1 ? $"{(int)t.TotalHours}:{t:mm\\:ss}" : $"{t:mm\\:ss}";
+    }
+
     public static Color Darken(this Color color, float amount)
     {
         Color.RGBToHSV(color, out var h, out var s, out var v);
