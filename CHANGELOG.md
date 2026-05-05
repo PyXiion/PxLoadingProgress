@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-05-05
+
 ### Added
 
 - The loading time estimate is now based on a weighted average of the last N recorded load times (default 10) instead of only the most recent one. The 10 most recent launches are given progressively increasing weight (1× to 10×); older launches beyond those 10 all contribute equally at 1×, so no historical data is ever completely discarded.
@@ -209,7 +211,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - First implementation of the mod.
 
-[Unreleased]: https://github.com/ilyvion/loading-progress/compare/v0.9.6...HEAD
+[Unreleased]: https://github.com/ilyvion/loading-progress/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/ilyvion/loading-progress/compare/v0.9.6..v0.10.0
 [0.9.6]: https://github.com/ilyvion/loading-progress/compare/v0.9.5..v0.9.6
 [0.9.5]: https://github.com/ilyvion/loading-progress/compare/v0.9.4..v0.9.5
 [0.9.4]: https://github.com/ilyvion/loading-progress/compare/v0.9.3..v0.9.4
