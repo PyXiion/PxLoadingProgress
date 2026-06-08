@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-06-08
+
 ### Added
 
 - Since some mods mess with the main menu so much it makes our 'DrawInfoInCorner' label still inacessible, a button for showing the dialog has now been added to the mod settings as well.
@@ -215,7 +217,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - First implementation of the mod.
 
-[Unreleased]: https://github.com/ilyvion/loading-progress/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/ilyvion/loading-progress/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/ilyvion/loading-progress/compare/v0.10.0..v0.11.0
 [0.10.0]: https://github.com/ilyvion/loading-progress/compare/v0.9.6..v0.10.0
 [0.9.6]: https://github.com/ilyvion/loading-progress/compare/v0.9.5..v0.9.6
 [0.9.5]: https://github.com/ilyvion/loading-progress/compare/v0.9.4..v0.9.5
