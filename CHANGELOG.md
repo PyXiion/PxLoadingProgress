@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Since some mods mess with the main menu so much it makes our 'DrawInfoInCorner' label still inacessible, a button for showing the dialog has now been added to the mod settings as well.
+
 ## [0.10.0] - 2026-05-05
 
 ### Added

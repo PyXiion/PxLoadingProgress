@@ -1,3 +1,5 @@
+using ilyvion.LoadingProgress.StartupImpact.Dialog;
+
 namespace ilyvion.LoadingProgress;
 
 internal sealed class Settings : ModSettings
@@ -192,6 +194,8 @@ internal sealed class Settings : ModSettings
         Scribe_Values.Look(ref _smallBarColor, "smallBarColor", Widgets_Progressbar.SmallBarColor);
     }
 
+    private static TimeSpan? _loadingTime;
+
     public void DoSettingsWindowContents(Rect inRect)
     {
         Listing_Standard listingStandard = new();
@@ -305,6 +309,28 @@ internal sealed class Settings : ModSettings
             ];
             Find.WindowStack.Add(new FloatMenu(list));
         }
+
+        // if (ShowLastLoadingTimeInCorner)
+        // {
+        listingStandard.Gap();
+
+        _loadingTime ??= TimeSpan.FromSeconds(
+            LoadingProgressMod.Settings.AverageLoadingTime!.Value
+        );
+        string text = "LoadingProgress.LoadingTime".Translate(
+            Utilities.FormatDuration(_loadingTime.Value)
+        );
+        if (
+            listingStandard.ButtonTextLabeled(
+                "LoadingProgress.LoadingTimeLabel".Translate(),
+                text,
+                tooltip: "LoadingProgress.LoadingTime.Tip".Translate()
+            )
+        )
+        {
+            Find.WindowStack.Add(new DialogStartupImpact());
+        }
+        // }
 
         listingStandard.End();
     }
