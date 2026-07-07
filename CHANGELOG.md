@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- New opt-in setting to automatically save the startup impact report to `StartupImpactData.xml` after every game startup, so external tools (such as the RimSort mod manager) can display each mod's startup load time without requiring a manual save from the startup impact window. ([#2])
+- Startup impact reports now record each mod's package ID alongside its name, allowing external tools to match report entries to mods reliably. ([#2])
+
 ## [0.11.0] - 2026-06-08
 
 ### Added
@@ -217,6 +222,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - First implementation of the mod.
 
+[#2]: https://github.com/ilyvion/loading-progress/issues/2
 [Unreleased]: https://github.com/ilyvion/loading-progress/compare/v0.11.0...HEAD
 [0.11.0]: https://github.com/ilyvion/loading-progress/compare/v0.10.0..v0.11.0
 [0.10.0]: https://github.com/ilyvion/loading-progress/compare/v0.9.6..v0.10.0

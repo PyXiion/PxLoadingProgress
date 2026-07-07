@@ -4,6 +4,7 @@ internal sealed class StartupImpactSessionModData : IExposable
 {
 #pragma warning disable IDE0032 // Use auto property
     private string modName = "";
+    private string modPackageId = "";
 #pragma warning restore IDE0032 // Use auto property
     private Dictionary<string, float> metrics = [];
     private float totalImpact;
@@ -11,6 +12,7 @@ internal sealed class StartupImpactSessionModData : IExposable
     private float offThreadTotalImpact;
 
     public string ModName => modName;
+    public string ModPackageId => modPackageId;
     public IReadOnlyDictionary<string, float> Metrics => metrics.AsReadOnly();
     public float TotalImpact => totalImpact;
     public IReadOnlyDictionary<string, float> OffThreadMetrics => offThreadMetrics;
@@ -20,6 +22,7 @@ internal sealed class StartupImpactSessionModData : IExposable
         new()
         {
             modName = info.Mod.Name ?? string.Empty,
+            modPackageId = info.Mod.PackageIdPlayerFacing ?? string.Empty,
             metrics = new Dictionary<string, float>(info.Profiler.Metrics),
             totalImpact = info.Profiler.TotalImpact,
             offThreadMetrics = new Dictionary<string, float>(info.Profiler.OffThreadMetrics),
@@ -29,6 +32,7 @@ internal sealed class StartupImpactSessionModData : IExposable
     public void ExposeData()
     {
         Scribe_Values.Look(ref modName!, "modName");
+        Scribe_Values.Look(ref modPackageId!, "modPackageId");
         Scribe_Collections.Look(
             ref metrics,
             "metrics",
