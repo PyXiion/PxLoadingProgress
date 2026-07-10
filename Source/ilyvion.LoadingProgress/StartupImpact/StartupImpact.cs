@@ -40,6 +40,30 @@ internal sealed class StartupImpact
                 Assembly.GetExecutingAssembly(),
                 "StartupImpact"
             );
+
+            if (
+                LoadingProgressMod.Settings.TrackStartupLoadingImpact
+                && LoadingProgressMod.Settings.AutoSaveStartupImpactReport
+            )
+            {
+                // FinishLoading can run off the main thread, and Scribe.saver is
+                // global state also used from the main thread; defer the save.
+                LongEventHandler.ExecuteWhenFinished(static () =>
+                {
+                    try
+                    {
+                        Dialog.StartupImpactSessionStorage.Save(
+                            Dialog.StartupImpactSessionData.FromCurrentSession()
+                        );
+                    }
+                    catch (Exception e)
+                    {
+                        LoadingProgressMod.Error(
+                            "Failed to auto-save startup impact report: " + e
+                        );
+                    }
+                });
+            }
         }
     }
 

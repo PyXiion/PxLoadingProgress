@@ -127,6 +127,13 @@ internal sealed class Settings : ModSettings
         set => _trackStartupLoadingImpact = value;
     }
 
+    private bool _autoSaveStartupImpactReport;
+    public bool AutoSaveStartupImpactReport
+    {
+        get => _autoSaveStartupImpactReport;
+        set => _autoSaveStartupImpactReport = value;
+    }
+
     private Color _progressBarColor = Widgets_Progressbar.BarColor;
     public Color ProgressBarColor
     {
@@ -190,6 +197,11 @@ internal sealed class Settings : ModSettings
             true
         );
         Scribe_Values.Look(ref _trackStartupLoadingImpact, "trackStartupLoadingImpact", false);
+        Scribe_Values.Look(
+            ref _autoSaveStartupImpactReport,
+            "autoSaveStartupImpactReport",
+            false
+        );
         Scribe_Values.Look(ref _progressBarColor, "progressBarColor", Widgets_Progressbar.BarColor);
         Scribe_Values.Look(ref _smallBarColor, "smallBarColor", Widgets_Progressbar.SmallBarColor);
     }
@@ -263,6 +275,15 @@ internal sealed class Settings : ModSettings
             ref _trackStartupLoadingImpact,
             "LoadingProgress.TrackStartupLoadingImpact.Tip".Translate()
         );
+
+        if (_trackStartupLoadingImpact)
+        {
+            listingStandard.CheckboxLabeled(
+                "LoadingProgress.AutoSaveStartupImpactReport".Translate(),
+                ref _autoSaveStartupImpactReport,
+                "LoadingProgress.AutoSaveStartupImpactReport.Tip".Translate()
+            );
+        }
 
         listingStandard.ColorPicker(
             "LoadingProgress.ProgressBarColor",

@@ -368,7 +368,7 @@ internal sealed class DialogStartupImpact : Window
         {
             try
             {
-                SaveSessionData();
+                StartupImpactSessionStorage.Save(_sessionData);
                 StatusText = "LoadingProgress.StartupImpact.Saved".Translate();
             }
             catch (Exception ex)
@@ -381,7 +381,7 @@ internal sealed class DialogStartupImpact : Window
         {
             try
             {
-                var newSessionData = LoadSessionData();
+                var newSessionData = StartupImpactSessionStorage.Load();
                 if (newSessionData != null)
                 {
                     _sessionData = newSessionData;
@@ -438,31 +438,6 @@ internal sealed class DialogStartupImpact : Window
                 );
             }
         }
-    }
-
-    private const string SaveFileName = "StartupImpactData.xml";
-    private const string SaveLabel = "sessionData";
-
-    private static string SaveFilePath =>
-        Path.Combine(GenFilePaths.SaveDataFolderPath, GenText.SanitizeFilename(SaveFileName));
-
-    private void SaveSessionData()
-    {
-        Scribe.saver.InitSaving(SaveFilePath, "StartupImpactSession");
-        Scribe_Deep.Look(ref _sessionData, SaveLabel);
-        Scribe.saver.FinalizeSaving();
-    }
-
-    private static StartupImpactSessionData? LoadSessionData()
-    {
-        StartupImpactSessionData? sessionData = null;
-        if (File.Exists(SaveFilePath))
-        {
-            Scribe.loader.InitLoading(SaveFilePath);
-            Scribe_Deep.Look(ref sessionData, SaveLabel);
-            Scribe.loader.FinalizeLoading();
-        }
-        return sessionData;
     }
 
     [StaticConstructorOnStartup]
