@@ -25,6 +25,7 @@ internal sealed class StartupImpactSessionViewData
     public float BasegameLoadingTime { get; private set; }
     public float ModsLoadingTime { get; private set; }
     public float MaxImpact { get; private set; }
+    public float CorrectedLoadingTime { get; private set; }
 
     public IReadOnlyList<string> Categories => categories.AsReadOnly();
     public IReadOnlyList<string> CategoriesNonMods => categoriesNonMods.AsReadOnly();
@@ -85,14 +86,7 @@ internal sealed class StartupImpactSessionViewData
         categories.AddRange(categorySet.OrderBy(category => category));
 
         var totalLoadingTime = ModsLoadingTime + hiddenModsLoadingTime + BasegameLoadingTime;
-        if (sessionData.LoadingTime == 0)
-        {
-            sessionData.OverrideLoadingTime(totalLoadingTime);
-        }
-        else if (totalLoadingTime > sessionData.LoadingTime)
-        {
-            sessionData.OverrideLoadingTime(totalLoadingTime);
-        }
+        CorrectedLoadingTime = Math.Max(sessionData.LoadingTime, totalLoadingTime);
 
         metricsTotal.Clear();
         metricsTotal.AddRange(
@@ -100,7 +94,7 @@ internal sealed class StartupImpactSessionViewData
                 ModsLoadingTime,
                 hiddenModsLoadingTime,
                 BasegameLoadingTime,
-                Math.Max(0, sessionData.LoadingTime - totalLoadingTime),
+                Math.Max(0, CorrectedLoadingTime - totalLoadingTime),
             ]
         );
     }

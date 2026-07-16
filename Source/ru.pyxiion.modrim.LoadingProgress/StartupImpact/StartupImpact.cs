@@ -41,29 +41,22 @@ internal sealed class StartupImpact
                 "StartupImpact"
             );
 
-            if (
-                LoadingProgressMod.Settings.TrackStartupLoadingImpact
-                && LoadingProgressMod.Settings.AutoSaveStartupImpactReport
-            )
+            // FinishLoading can run off the main thread — defer the save.
+            LongEventHandler.ExecuteWhenFinished(static () =>
             {
-                // FinishLoading can run off the main thread, and Scribe.saver is
-                // global state also used from the main thread; defer the save.
-                LongEventHandler.ExecuteWhenFinished(static () =>
+                try
                 {
-                    try
-                    {
-                        Dialog.StartupImpactSessionStorage.Save(
-                            Dialog.StartupImpactSessionData.FromCurrentSession()
-                        );
-                    }
-                    catch (Exception e)
-                    {
-                        LoadingProgressMod.Error(
-                            "Failed to auto-save startup impact report: " + e
-                        );
-                    }
-                });
-            }
+                    Dialog.StartupImpactSessionStorage.Save(
+                        Dialog.StartupImpactSessionData.FromCurrentSession()
+                    );
+                }
+                catch (Exception e)
+                {
+                    LoadingProgressMod.Error(
+                        "Failed to auto-save startup impact report: " + e
+                    );
+                }
+            });
         }
     }
 

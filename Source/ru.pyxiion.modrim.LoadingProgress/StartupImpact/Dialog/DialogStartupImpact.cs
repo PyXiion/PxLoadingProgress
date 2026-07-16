@@ -260,7 +260,7 @@ internal sealed class DialogStartupImpact : Window
         Widgets.Label(
             titleRect,
             "LoadingProgress.StartupImpact.StartupTime".Translate(
-                ProfilerBar.TimeText(_sessionData.LoadingTime)
+                ProfilerBar.TimeText(_sessionViewData.CorrectedLoadingTime)
             )
         );
         y += titleRect.height;
@@ -270,7 +270,7 @@ internal sealed class DialogStartupImpact : Window
             profileRect,
             _sessionViewData.MetricsTotal,
             StartupImpactSessionViewData.CategoriesTotal,
-            _sessionData.LoadingTime,
+            _sessionViewData.CorrectedLoadingTime,
             CategoryColors
         );
         y += profileRect.height + InnerSpacing;
