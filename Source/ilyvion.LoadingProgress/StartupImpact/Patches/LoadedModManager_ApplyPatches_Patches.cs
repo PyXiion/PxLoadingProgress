@@ -6,75 +6,45 @@ namespace ilyvion.LoadingProgress.StartupImpact.Patches;
 [HarmonyPatchCategory("StartupImpact")]
 internal static class LoadedModManager_ApplyPatches_Patches
 {
-#pragma warning disable CA1859 // Use concrete types when possible for improved performance
     private static IEnumerable<CodeInstruction> Transpiler(
         IEnumerable<CodeInstruction> instructions,
         ILGenerator generator
-    )
-#pragma warning restore CA1859 // Use concrete types when possible for improved performance
-    {
-        var original = instructions.ToList();
-
-        var codeMatcher = new CodeMatcher(original, generator);
-
-        _ = codeMatcher.SearchForward(i =>
-            i.Calls(
+    ) =>
+        TranspilerHelper.ProfileCurrentMoveNext(
+            instructions,
+            generator,
+            "LoadedModManager.ApplyPatches",
+            i => i.Calls(
                 AccessTools.PropertyGetter(
                     typeof(IEnumerator<PatchOperation>),
                     nameof(IEnumerator.Current)
                 )
-            )
+            ),
+            2,
+            i => i.Calls(
+                AccessTools.Method(typeof(IEnumerator), nameof(IEnumerator.MoveNext))
+            ),
+            [
+                new(OpCodes.Ldloc_1),
+                new(
+                    OpCodes.Call,
+                    AccessTools.Method(
+                        typeof(LoadedModManager_ApplyPatches_Patches),
+                        nameof(BeforeApplyPatches)
+                    )
+                ),
+            ],
+            [
+                new(OpCodes.Ldloc_1),
+                new(
+                    OpCodes.Call,
+                    AccessTools.Method(
+                        typeof(LoadedModManager_ApplyPatches_Patches),
+                        nameof(AfterApplyPatches)
+                    )
+                ),
+            ]
         );
-        if (codeMatcher.IsInvalid)
-        {
-            LoadingProgressMod.Error(
-                "LoadedModManager.ApplyPatches: Could not find a call to IEnumerator.Current."
-            );
-            return original;
-        }
-
-        _ = codeMatcher
-            .Advance(2)
-            .InsertAndAdvance(
-                [
-                    new(OpCodes.Ldloc_1),
-                    new(
-                        OpCodes.Call,
-                        AccessTools.Method(
-                            typeof(LoadedModManager_ApplyPatches_Patches),
-                            nameof(BeforeApplyPatches)
-                        )
-                    ),
-                ]
-            );
-
-        _ = codeMatcher.SearchForward(i =>
-            i.Calls(AccessTools.Method(typeof(IEnumerator), nameof(IEnumerator.MoveNext)))
-        );
-        if (codeMatcher.IsInvalid)
-        {
-            LoadingProgressMod.Error(
-                "LoadedModManager.ApplyPatches: Could not find a call to IEnumerator.MoveNext."
-            );
-            return original;
-        }
-        _ = codeMatcher
-            .Advance(1)
-            .InsertAndAdvance(
-                [
-                    new(OpCodes.Ldloc_1),
-                    new(
-                        OpCodes.Call,
-                        AccessTools.Method(
-                            typeof(LoadedModManager_ApplyPatches_Patches),
-                            nameof(AfterApplyPatches)
-                        )
-                    ),
-                ]
-            );
-
-        return codeMatcher.Instructions();
-    }
 
     private static void BeforeApplyPatches(PatchOperation patchOperation)
     {

@@ -153,12 +153,10 @@ internal sealed class Verse_LongEventHandler_LongEventsOnGUI_Patch
         return r;
     }
 
-#pragma warning disable CA1859 // Use concrete types when possible for improved performance
-    private static IEnumerable<CodeInstruction> Transpiler(
+private static IEnumerable<CodeInstruction> Transpiler(
         IEnumerable<CodeInstruction> instructions,
         ILGenerator generator
     )
-#pragma warning restore CA1859 // Use concrete types when possible for improved performance
     {
         var originalInstructionList = instructions.ToList();
 

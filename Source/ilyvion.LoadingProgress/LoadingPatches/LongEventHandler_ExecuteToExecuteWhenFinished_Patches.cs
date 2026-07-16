@@ -141,7 +141,7 @@ internal static partial class LongEventHandler_ExecuteToExecuteWhenFinished_Patc
                 // about potential issues.
                 if (!_hasWarnedAboutReloadIntPatches)
                 {
-                    Utilities.WarnAboutPatches(
+                    PatchCompat.WarnAboutPatches(
                         AccessTools.Method(
                             typeof(ModContentPack),
                             nameof(ModContentPack.ReloadContentInt)
