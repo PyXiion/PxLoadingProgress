@@ -23,7 +23,7 @@ jobs:
   build:
     uses: ilyvion/rimworld-utils/.github/workflows/build_mod.yml@main
     with:
-      mod_name: "ilyvion.LoadingProgress"
+      mod_name: "ru.pyxiion.modrim.loadingprogress"
       artifact_suffix: ${{ github.sha }}
       rw_versions: |-
         1.6

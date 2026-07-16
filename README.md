@@ -1,11 +1,11 @@
-[![RimWorld 1.6](https://img.shields.io/badge/RimWorld-1.6-brightgreen.svg)](http://rimworldgame.com/) [![Build](https://github.com/ilyvion/loading-progress/actions/workflows/ci.yml/badge.svg)](https://github.com/ilyvion/loading-progress/actions/workflows/ci.yml)
+[![RimWorld 1.6](https://img.shields.io/badge/RimWorld-1.6-brightgreen.svg)](http://rimworldgame.com/) [![Build](https://github.com/PyXiion/PxLoadingProgress/actions/workflows/ci.yml/badge.svg)](https://github.com/PyXiion/PxLoadingProgress/actions/workflows/ci.yml)
 
 **Loading Progress** is a RimWorld mod that adds a detailed loading progress window to the game. It visually tracks each stage of RimWorld's startup process, showing which step is currently running. This makes waiting for RimWorld to start slightly more interesting. The mod is especially useful for those with large mod lists. No configuration required—just install and enjoy better insight into your game's loading process!
 
 ## Building from source
 
 ```bash
-dotnet build --property "RimWorldVersion=1.6" ilyvion.LoadingProgress.sln
+dotnet build --property "RimWorldVersion=1.6" ru.pyxiion.modrim.LoadingProgress.sln
 ```
 
 Output lands in `1.6/Assemblies/`. Requires .NET 10 SDK. See `companion-mods/AGENTS.md` for full dev setup.

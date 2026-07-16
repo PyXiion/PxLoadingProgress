@@ -1,0 +1,297 @@
+using ru.pyxiion.modrim.LoadingProgress.FasterGameLoading;
+using ru.pyxiion.modrim.LoadingProgress.StartupImpact;
+
+namespace ru.pyxiion.modrim.LoadingProgress;
+
+[HarmonyPatch(typeof(LongEventHandler), nameof(LongEventHandler.ExecuteToExecuteWhenFinished))]
+internal static partial class LongEventHandler_ExecuteToExecuteWhenFinished_Patches
+{
+    private static bool _hasWarnedAboutReloadIntPatches;
+
+    private static bool Prepare()
+    {
+        if (!LoadingProgressMod.Settings.PatchInitialization)
+        {
+            LoadingProgressMod.Message(
+                "Patching of initialization code is disabled " + "in the settings, skipping patch."
+            );
+            return false;
+        }
+        return true;
+    }
+
+    private static bool Prefix()
+    {
+        if (
+            LongEventHandler.toExecuteWhenFinished.Count > 0
+            && LoadingProgressWindow.CurrentStage != LoadingStage.Finished
+        )
+        {
+            //LoadingProgressMod.Debug("Running Enumerable version of ExecuteToExecuteWhenFinished() called with " + LongEventHandler.toExecuteWhenFinished.Count + " actions to execute.\n" + Environment.StackTrace);
+            Utilities.LongEventHandlerPrependQueue(() =>
+            {
+                LongEventHandler.QueueLongEvent(
+                    ExecuteToExecuteWhenFinished(),
+                    "LoadingProgress.ExecuteToExecuteWhenFinished"
+                );
+            });
+            return false;
+        }
+        return true;
+    }
+
+    internal static IEnumerable ExecuteToExecuteWhenFinished()
+    {
+        // Once we start with the ExecuteToExecuteWhenFinished,
+        // we need to switch the active thread ID
+        LoadingProgressMod.instance.StartupImpact.UpdateActiveThreadId();
+
+        var patchReloadContent = LoadingProgressMod.Settings.PatchReloadContent;
+
+        if (LongEventHandler.executingToExecuteWhenFinished)
+        {
+            Log.Warning("Already executing.");
+            yield break;
+        }
+
+        HashSet<ModContentPack>? fasterGameLoadingLoadedMods = null;
+        if (FasterGameLoadingUtils.HasFasterGameLoading)
+        {
+            fasterGameLoadingLoadedMods = FasterGameLoadingUtils.LoadedMods;
+        }
+
+        var methods = StaticConstructorOnStartupCallAllFinder.FindMethodCalling().ToList();
+        MethodInfo? staticConstructorOnStartupUtilityCallAllMethod = null;
+        if (methods.Count != 1)
+        {
+            LoadingProgressMod.Error(
+                "Could not find call to StaticConstructorOnStartupUtility.CallAll "
+                    + "in PlayDataLoader; "
+                    + "static constructor execution will be done without showing progress."
+            );
+        }
+        else
+        {
+            staticConstructorOnStartupUtilityCallAllMethod = methods.First();
+        }
+
+        var methodFields = ReloadContentIntFinder.FindMethodCalling().ToList();
+        MethodInfo? reloadContentIntMethod = null;
+        FieldInfo? reloadContentIntmodContentPackField = null;
+        if (methodFields.Count != 1)
+        {
+            LoadingProgressMod.Error(
+                "Could not find call to ModContentPack.ReloadContentInt in ModContentPack; "
+                    + "reloading content will be done without showing detailed progress."
+            );
+        }
+        else
+        {
+            (reloadContentIntMethod, reloadContentIntmodContentPackField) = methodFields.First();
+        }
+
+        LongEventHandler.executingToExecuteWhenFinished = true;
+        if (LongEventHandler.toExecuteWhenFinished.Count > 0)
+        {
+            DeepProfiler.Start("ExecuteToExecuteWhenFinished()");
+        }
+        var reloadContentStepCount =
+            LongEventHandler.toExecuteWhenFinished.Count(te =>
+                te.Method.Name.Contains("ReloadContent", StringComparison.Ordinal)
+            ) * 4;
+        var reloadContentStepCounter = 0;
+        for (var i = 0; i < LongEventHandler.toExecuteWhenFinished.Count; i++)
+        {
+            var toExecuteWhenFinished = LongEventHandler.toExecuteWhenFinished[i];
+
+            if (
+                !StaticConstructorOnStartupUtilityReplacement._callAllCalled
+                && toExecuteWhenFinished.Method == staticConstructorOnStartupUtilityCallAllMethod
+            )
+            {
+                // If this is the StaticConstructorOnStartupUtility.CallAll method, we want to
+                // run it and bail to let it do its own QueueLongEvent.
+                StaticConstructorOnStartupUtilityReplacement.Interject();
+
+                DeepProfiler.End();
+                LongEventHandler.toExecuteWhenFinished.RemoveRange(0, i);
+                LongEventHandler.executingToExecuteWhenFinished = false;
+
+                // LoadingProgressMod.Debug("StaticConstructorOnStartupUtility.CallAll was up, "
+                //     + "interrupting ExecuteToExecuteWhenFinished.");
+
+                yield break;
+            }
+
+            var skipReload = false;
+            if (
+                patchReloadContent
+                && toExecuteWhenFinished is { } action
+                && action.Method == reloadContentIntMethod
+                && action.Target.GetType() == reloadContentIntMethod.DeclaringType
+                && reloadContentIntmodContentPackField is not null
+            )
+            {
+                // Pause Faster Game Loading's content loader; we're taking over now.
+                FasterGameLoading_DelayedActions_LateUpdate_Patches._pauseFasterGameLoading_DelayedActions_LateUpdate =
+                    true;
+
+                // We replace ReloadContentInt with our own enumerated implementation and do not
+                // let the original run, so transpilers might not work as expected. Warn players
+                // about potential issues.
+                if (!_hasWarnedAboutReloadIntPatches)
+                {
+                    PatchCompat.WarnAboutPatches(
+                        AccessTools.Method(
+                            typeof(ModContentPack),
+                            nameof(ModContentPack.ReloadContentInt)
+                        ),
+                        false,
+                        warnKinds: PatchKinds.Transpiler
+                    );
+                    _hasWarnedAboutReloadIntPatches = true;
+                }
+
+                var modContentPack = (ModContentPack)
+                    reloadContentIntmodContentPackField.GetValue(action.Target)!;
+                ModContentPack_ReloadContentInt_Patch.CurrentModContentPack = modContentPack;
+                if (fasterGameLoadingLoadedMods is not null)
+                {
+                    skipReload = fasterGameLoadingLoadedMods.Contains(modContentPack);
+                    if (skipReload)
+                    {
+                        // Skipping reloading content for {modContentPack.Name} because
+                        // Faster Game Loading has already loaded it.
+                        reloadContentStepCounter += 4; // Skip the 4 steps of reloading content.
+                    }
+                    else
+                    {
+                        // We add this mod to the list of loaded mods so Faster Game Loading
+                        // skips it.
+                        _ = fasterGameLoadingLoadedMods.Add(modContentPack);
+                    }
+                }
+
+                if (!skipReload)
+                {
+                    // Reloading content for {modContentPack.Name}.
+                    foreach (
+                        var value in ReloadContentIntReplacement.ReloadContentInt(modContentPack)
+                    )
+                    {
+                        LoadingDataTracker.Current = modContentPack.Name;
+                        LoadingProgressWindow.CurrentLoadingActivity = $"LP.Reload {value}";
+                        LoadingProgressWindow.StageProgress = (
+                            reloadContentStepCounter + 1,
+                            reloadContentStepCount
+                        );
+                        yield return value;
+                        reloadContentStepCounter++;
+                    }
+                    // Run the original method to let other mods' prefixes and postfixes run
+                    modContentPack.ReloadContentInt();
+                    yield return null;
+                }
+                else { }
+                continue;
+            }
+            else if (
+                toExecuteWhenFinished is Action action2
+                && action2.Method == reloadContentIntMethod
+            )
+            {
+                LoadingProgressMod.Error(
+                    "ReloadContentInt was called with target being "
+                        + action2.Target.GetType().FullName
+                        + ":"
+                        + action2.Target
+                        + ", but we expected it to be "
+                        + reloadContentIntMethod.DeclaringType.FullName
+                        + ":"
+                        + reloadContentIntMethod
+                );
+            }
+
+            ModContentPack_ReloadContentInt_Patch.CurrentModContentPack = null;
+
+            var label =
+                toExecuteWhenFinished.Method.DeclaringType.ToString()
+                + " -> "
+                + toExecuteWhenFinished.Method.ToString();
+            if (
+                LoadingProgressWindow.CurrentStage
+                is LoadingStage.ExecuteToExecuteWhenFinished
+                    or LoadingStage.ExecuteToExecuteWhenFinished2
+            )
+            {
+                if (
+                    !label.Contains("ModContentPack", StringComparison.Ordinal)
+                    || !label.Contains("ReloadContent", StringComparison.Ordinal)
+                )
+                {
+                    LoadingProgressWindow.SetCurrentLoadingActivityRaw(label);
+                }
+                LoadingProgressWindow.StageProgress = (
+                    i + 1,
+                    LongEventHandler.toExecuteWhenFinished.Count
+                );
+            }
+            yield return null;
+            DeepProfiler.Start(label);
+            try
+            {
+                var methodAssembly = toExecuteWhenFinished.Method.DeclaringType.Assembly;
+                var assemblyMod = Utilities.FindModByAssembly(methodAssembly);
+                var isBaseGame = methodAssembly.FullName.StartsWith(
+                    "Assembly-CSharp",
+                    StringComparison.Ordinal
+                );
+                if (isBaseGame)
+                {
+                    StartupImpactProfilerUtil.StartBaseGameProfiler(
+                        $"LoadingProgress.StartupImpact.ExecuteToExecuteWhenFinished|{label}"
+                    );
+                }
+                else
+                {
+                    StartupImpactProfilerUtil.StartModProfiler(
+                        assemblyMod,
+                        $"LoadingProgress.StartupImpact.ExecuteToExecuteWhenFinished|{label}"
+                    );
+                }
+
+                toExecuteWhenFinished();
+
+                if (isBaseGame)
+                {
+                    StartupImpactProfilerUtil.StopBaseGameProfiler(
+                        $"LoadingProgress.StartupImpact.ExecuteToExecuteWhenFinished|{label}"
+                    );
+                }
+                else
+                {
+                    StartupImpactProfilerUtil.StopModProfiler(
+                        assemblyMod,
+                        $"LoadingProgress.StartupImpact.ExecuteToExecuteWhenFinished|{label}"
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Could not execute post-long-event action. Exception: " + ex);
+            }
+            finally
+            {
+                DeepProfiler.End();
+            }
+        }
+        if (LongEventHandler.toExecuteWhenFinished.Count > 0)
+        {
+            DeepProfiler.End();
+        }
+        LongEventHandler.toExecuteWhenFinished.Clear();
+        LongEventHandler.executingToExecuteWhenFinished = false;
+        FasterGameLoading_DelayedActions_LateUpdate_Patches._pauseFasterGameLoading_DelayedActions_LateUpdate =
+            false;
+    }
+}
