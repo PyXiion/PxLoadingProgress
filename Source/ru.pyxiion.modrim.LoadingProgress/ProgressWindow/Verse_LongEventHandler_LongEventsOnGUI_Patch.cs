@@ -13,79 +13,50 @@ internal sealed class Verse_LongEventHandler_DrawLongEventWindowContents_Patch
             return;
         }
 
-        var loadingProgressWindowSize = LoadingProgressWindow.WindowSize;
-        var fasterGameLoadingProgressWindowSize = FasterGameLoadingProgressWindow.WindowSize;
-        var loadingProgressWindowOffset = 0f;
-        switch (LoadingProgressMod.Settings.LoadingWindowPlacement)
-        {
-            case LoadingWindowPlacement.Top:
-                loadingProgressWindowOffset = 10f + LongEventHandler.StatusRectSize.y + 10f;
-                break;
-            case LoadingWindowPlacement.Middle:
-                loadingProgressWindowOffset =
-                    (
-                        UI.screenHeight
-                        - loadingProgressWindowSize.y
-                        - fasterGameLoadingProgressWindowSize.y
-                    ) / 2f;
-                break;
-            case LoadingWindowPlacement.Bottom:
-                loadingProgressWindowOffset =
-                    UI.screenHeight
-                    - loadingProgressWindowSize.y
-                    - fasterGameLoadingProgressWindowSize.y
-                    - 10f
-                    - (fasterGameLoadingProgressWindowSize.y > 0 ? 10f : 0f);
-                break;
-            case LoadingWindowPlacement.Custom:
-                // Custom logic can be added here if needed
-                break;
-            default:
-                break;
-        }
+        var useImmediateWindow =
+            LongEventHandler.currentEvent.UseStandardWindow
+            && Find.UIRoot != null
+            && Find.WindowStack != null;
 
-        Vector2 loadingProgressWindowPosition = new(
-            (UI.screenWidth - loadingProgressWindowSize.x) / 2f,
-            loadingProgressWindowOffset
+        var rect = LoadingScreenLayout.CenteredRect(
+            LoadingScreenLayout.ProgressWindowTop,
+            LoadingProgressWindow.WindowSize
         );
-        Rect rect = new(
-            loadingProgressWindowPosition.x,
-            loadingProgressWindowPosition.y,
-            loadingProgressWindowSize.x,
-            loadingProgressWindowSize.y
+        DrawPanel(
+            rect,
+            useImmediateWindow,
+            LoadingProgressWindow.DrawWindow,
+            LoadingProgressWindow.DrawContents
         );
 
-        var useStandardWindow = LongEventHandler.currentEvent.UseStandardWindow;
-        if (!useStandardWindow || Find.UIRoot == null || Find.WindowStack == null)
+        rect = LoadingScreenLayout.CenteredRect(
+            LoadingScreenLayout.GapBelow(rect),
+            FasterGameLoadingProgressWindow.WindowSize
+        );
+        DrawPanel(
+            rect,
+            useImmediateWindow,
+            FasterGameLoadingProgressWindow.DrawWindow,
+            FasterGameLoadingProgressWindow.DrawContents
+        );
+    }
+
+    private static void DrawPanel(
+        Rect rect,
+        bool useImmediateWindow,
+        Action<Rect> drawWindow,
+        Action<Rect> drawContents
+    )
+    {
+        if (useImmediateWindow)
         {
-            Widgets.DrawShadowAround(rect);
-            Widgets.DrawWindowBackground(rect);
-            LoadingProgressWindow.DrawContents(rect);
+            drawWindow(rect);
         }
         else
         {
-            LoadingProgressWindow.DrawWindow(rect);
-        }
-
-        Vector2 fasterGameLoadingProgressWindowPosition = new(
-            (UI.screenWidth - fasterGameLoadingProgressWindowSize.x) / 2f,
-            rect.yMax + 10f
-        );
-        rect = new(
-            fasterGameLoadingProgressWindowPosition.x,
-            fasterGameLoadingProgressWindowPosition.y,
-            fasterGameLoadingProgressWindowSize.x,
-            fasterGameLoadingProgressWindowSize.y
-        );
-        if (!useStandardWindow || Find.UIRoot == null || Find.WindowStack == null)
-        {
             Widgets.DrawShadowAround(rect);
             Widgets.DrawWindowBackground(rect);
-            FasterGameLoadingProgressWindow.DrawContents(rect);
-        }
-        else
-        {
-            FasterGameLoadingProgressWindow.DrawWindow(rect);
+            drawContents(rect);
         }
     }
 }
@@ -105,55 +76,14 @@ internal sealed class Verse_LongEventHandler_LongEventsOnGUI_Patch
 
     private static Rect AdjustStatusWindowRect(Rect r)
     {
-        if (LoadingProgressWindow.CurrentStage == LoadingStage.Finished)
+        if (LoadingProgressWindow.CurrentStage != LoadingStage.Finished)
         {
-            return r;
+            r.y = LoadingScreenLayout.StatusRectTop;
         }
-
-        var statusRectSize = LongEventHandler.StatusRectSize;
-        var loadingProgressWindowSize = LoadingProgressWindow.WindowSize;
-        var fasterGameLoadingProgressWindowSize = FasterGameLoadingProgressWindow.WindowSize;
-
-        float statusRectTop = 0;
-        ;
-        switch (LoadingProgressMod.Settings.LoadingWindowPlacement)
-        {
-            case LoadingWindowPlacement.Top:
-                statusRectTop = 10f;
-                break;
-            case LoadingWindowPlacement.Middle:
-                statusRectTop =
-                    (
-                        (
-                            UI.screenHeight
-                            - loadingProgressWindowSize.y
-                            - fasterGameLoadingProgressWindowSize.y
-                        ) / 2f
-                    )
-                    - statusRectSize.y
-                    - 10f;
-                break;
-            case LoadingWindowPlacement.Bottom:
-                statusRectTop =
-                    UI.screenHeight
-                    - loadingProgressWindowSize.y
-                    - fasterGameLoadingProgressWindowSize.y
-                    - 10f
-                    - (fasterGameLoadingProgressWindowSize.y > 0 ? 10f : 0f)
-                    - statusRectSize.y
-                    - 10f;
-                break;
-            case LoadingWindowPlacement.Custom:
-                // Custom logic can be added here if needed
-                break;
-            default:
-                break;
-        }
-        r.y = statusRectTop;
         return r;
     }
 
-private static IEnumerable<CodeInstruction> Transpiler(
+    private static IEnumerable<CodeInstruction> Transpiler(
         IEnumerable<CodeInstruction> instructions,
         ILGenerator generator
     )

@@ -12,8 +12,7 @@ internal static class ModContentPack_LoadingDataTracker_Patches
             return;
         }
 
-        LoadingDataTracker.Previous = LoadingDataTracker.Current;
-        LoadingDataTracker.Current = __instance.Name;
+        LoadingDataTracker.SwitchTo(__instance.Name);
     }
 
     [HarmonyPatch(nameof(ModContentPack.LoadPatches))]
@@ -25,7 +24,6 @@ internal static class ModContentPack_LoadingDataTracker_Patches
             return;
         }
 
-        LoadingDataTracker.Previous = LoadingDataTracker.Current;
-        LoadingDataTracker.Current = __instance.Name;
+        LoadingDataTracker.SwitchTo(__instance.Name);
     }
 }

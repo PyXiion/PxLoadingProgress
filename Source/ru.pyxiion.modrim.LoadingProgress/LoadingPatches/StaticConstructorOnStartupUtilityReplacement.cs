@@ -61,33 +61,18 @@ internal static partial class LongEventHandler_ExecuteToExecuteWhenFinished_Patc
 {
     private static class StaticConstructorOnStartupCallAllFinder
     {
-        private static readonly MethodInfo _method_StaticConstructorOnStartupUtility_CallAll =
-            AccessTools.Method(
-                typeof(StaticConstructorOnStartupUtility),
-                nameof(StaticConstructorOnStartupUtility.CallAll)
-            );
-
         private static readonly CodeMatch[] toMatch =
         [
-            new(OpCodes.Call, _method_StaticConstructorOnStartupUtility_CallAll),
+            new(
+                OpCodes.Call,
+                AccessTools.Method(
+                    typeof(StaticConstructorOnStartupUtility),
+                    nameof(StaticConstructorOnStartupUtility.CallAll)
+                )
+            ),
         ];
 
-        public static IEnumerable<MethodInfo> FindMethodCalling()
-        {
-            // Find all possible candidates, both from the wrapping type and all nested types.
-            var candidates = Utilities.FindInTypeAndInnerTypeMethods(typeof(PlayDataLoader));
-
-            //check all candidates for the target instructions, return those that match.
-            foreach (var method in candidates)
-            {
-                var instructions = PatchProcessor.GetCurrentInstructions(method);
-                var matched = instructions.Matches(toMatch);
-                if (matched)
-                {
-                    yield return method;
-                }
-            }
-            yield break;
-        }
+        public static IEnumerable<MethodInfo> FindMethodCalling() =>
+            Utilities.FindMethodsDoing(typeof(PlayDataLoader), toMatch);
     }
 }
