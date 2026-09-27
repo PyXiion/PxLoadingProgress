@@ -17,10 +17,16 @@ internal static class DeepProfiler_Start_Patches
     {
         if (label == null)
         {
-            var method = new StackTrace().GetFrame(2).GetMethod();
-            var mod = Utilities.FindModByAssembly(method.DeclaringType.Assembly);
+            var method = new StackTrace().GetFrame(2)?.GetMethod();
+            var declaringType = method?.DeclaringType;
+            var mod =
+                declaringType != null ? Utilities.FindModByAssembly(declaringType.Assembly) : null;
+            var callerDescription =
+                declaringType != null && method != null
+                    ? $"{declaringType.FullName}.{method.Name}"
+                    : "[unknown caller]";
             LoadingProgressMod.Warning(
-                $"Why is {method.DeclaringType.FullName}.{method.Name} from {mod?.Name ?? "{unknown}"} calling DeepProfiler.Start (and by extension our patch) with null?! Stop it."
+                $"Why is {callerDescription} from {mod?.Name ?? "{unknown}"} calling DeepProfiler.Start (and by extension our patch) with null?! Stop it."
             );
             return;
         }

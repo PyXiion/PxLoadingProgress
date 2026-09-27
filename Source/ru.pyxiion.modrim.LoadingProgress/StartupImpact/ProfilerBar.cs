@@ -234,7 +234,7 @@ internal sealed class ProfilerBar
             if (lastNonZero >= 0)
             {
                 var actualSum = shares.Sum();
-                shares[lastNonZero] += Mathf.Max(0f, 1f - actualSum);
+                shares[lastNonZero] += 1f - actualSum;
             }
         }
 

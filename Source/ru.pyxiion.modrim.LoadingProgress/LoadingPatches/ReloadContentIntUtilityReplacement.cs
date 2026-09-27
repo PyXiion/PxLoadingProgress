@@ -90,16 +90,23 @@ internal static partial class LongEventHandler_ExecuteToExecuteWhenFinished_Patc
         /// Finds the closure method that calls ReloadContentInt, and the closure's field holding
         /// the ModContentPack it's called on.
         /// </summary>
-        public static IEnumerable<(MethodInfo method, FieldInfo thisField)> FindMethodCalling() =>
-            Utilities
-                .FindMethodsDoing(typeof(ModContentPack), toMatch)
-                .Select(method =>
-                    (
-                        method,
-                        AccessTools
-                            .GetDeclaredFields(method.DeclaringType)
-                            .Single(f => f.Name.Contains("this", StringComparison.Ordinal))
-                    )
-                );
+        public static IEnumerable<(MethodInfo method, FieldInfo thisField)> FindMethodCalling()
+        {
+            foreach (var method in Utilities.FindMethodsDoing(typeof(ModContentPack), toMatch))
+            {
+                var field = AccessTools
+                    .GetDeclaredFields(method.DeclaringType)
+                    .SingleOrDefault(f => f.Name.Contains("this", StringComparison.Ordinal));
+                if (field is null)
+                {
+                    LoadingProgressMod.Error(
+                        $"Could not find closure field on {method.DeclaringType} "
+                            + $"for method {method}({method.FullDescription()}); skipping candidate."
+                    );
+                    continue;
+                }
+                yield return (method, field);
+            }
+        }
     }
 }

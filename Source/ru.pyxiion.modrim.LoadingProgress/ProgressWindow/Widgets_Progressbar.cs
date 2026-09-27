@@ -19,10 +19,10 @@ internal static class Widgets_Progressbar
 
         // get the bar rect
         var barRect = progressRect.ContractedBy(2f);
-        var unit = barRect.width / maxValue;
+        var unit = maxValue > 0f ? barRect.width / maxValue : 0f;
         barRect.width = currentValue * unit;
 
-        if (smallCurrentValue.HasValue && smallMaxValue.HasValue)
+        if (smallCurrentValue.HasValue && smallMaxValue.HasValue && smallMaxValue.Value > 0f)
         {
             smallCurrentValue = smallCurrentValue.Value % (2 * smallMaxValue.Value);
 

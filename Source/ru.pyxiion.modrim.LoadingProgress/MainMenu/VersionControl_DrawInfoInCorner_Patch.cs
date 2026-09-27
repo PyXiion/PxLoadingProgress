@@ -22,15 +22,19 @@ internal static class VersionControl_DrawInfoInCorner_Patch
             return;
         }
 
+        if (LoadingProgressMod.Settings.AverageLoadingTime is not { } averageLoadingTime)
+        {
+            // No loading time has been recorded yet
+            return;
+        }
+
         var rect = new Rect(UI.screenWidth - 10f, UI.screenHeight - 10f, 0, 0);
-        DrawLoadingTime(rect);
+        DrawLoadingTime(rect, averageLoadingTime);
     }
 
-    internal static void DrawLoadingTime(Rect rect)
+    internal static void DrawLoadingTime(Rect rect, float averageLoadingTime)
     {
-        _loadingTime ??= TimeSpan.FromSeconds(
-            LoadingProgressMod.Settings.AverageLoadingTime!.Value
-        );
+        _loadingTime ??= TimeSpan.FromSeconds(averageLoadingTime);
         string text = "LoadingProgress.LoadingTime".Translate(
             Utilities.FormatDuration(_loadingTime.Value)
         );

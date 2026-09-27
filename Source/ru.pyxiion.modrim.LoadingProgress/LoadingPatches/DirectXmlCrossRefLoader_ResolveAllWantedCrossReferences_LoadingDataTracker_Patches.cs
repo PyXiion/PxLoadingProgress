@@ -27,7 +27,7 @@ internal static class DirectXmlCrossRefLoader_ResolveAllWantedCrossReferences_Lo
         if (codeMatcher.IsInvalid)
         {
             LoadingProgressMod.Error(
-                "XmlInheritance.ResolveXmlNodes: Could not find a call to List<>.get_Item."
+                "DirectXmlCrossRefLoader.ResolveAllWantedCrossReferences: Could not find a call to WantedRef.Apply."
             );
             return original;
         }

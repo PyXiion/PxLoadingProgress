@@ -102,6 +102,7 @@ internal sealed class StartupImpactSessionViewData
     public void CalculateBaseGameStats()
     {
         categoriesNonMods.Clear();
+        metricsNonMods.Clear();
         BasegameLoadingTime = 0;
 
         foreach (var entry in sessionData.Metrics)

@@ -18,7 +18,7 @@ internal static class LoadedModManager_LoadingDataTracker_Patches
         var total = 0;
         foreach (var xml in xmls)
         {
-            total += xml.xmlDoc.DocumentElement.ChildNodes.Count;
+            total += xml?.xmlDoc?.DocumentElement?.ChildNodes.Count ?? 0;
         }
         LoadingProgressWindow.StageProgress = (0, total);
     }

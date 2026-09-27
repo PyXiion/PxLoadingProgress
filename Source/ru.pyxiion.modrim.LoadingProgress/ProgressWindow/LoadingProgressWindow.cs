@@ -64,7 +64,7 @@ internal sealed partial class LoadingProgressWindow
         loadingProgressRect.width -= 2 * HorizontalMargin;
         loadingProgressRect.height = Text.LineHeight;
 
-        Widgets.Label(loadingProgressRect, "Loading progress");
+        Widgets.Label(loadingProgressRect, Translations.GetTranslation("LoadingProgress.Title"));
 
         var loadingActivityRect = loadingProgressRect;
         loadingProgressRect.y += loadingProgressRect.height + VerticalWidgetMargin;

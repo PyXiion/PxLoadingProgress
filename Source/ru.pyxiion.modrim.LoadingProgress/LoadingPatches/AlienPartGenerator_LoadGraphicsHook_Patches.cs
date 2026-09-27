@@ -6,6 +6,10 @@ internal static class AlienPartGenerator_LoadGraphicsHook_Patches
     internal static bool Prepare() =>
         ModsConfig.ActiveModsInLoadOrder.Any(mod =>
             mod.PackageId.Equals("erdelf.humanoidalienraces", StringComparison.OrdinalIgnoreCase)
+            || mod.PackageId.Equals(
+                "erdelf.humanoidalienraces.dev",
+                StringComparison.OrdinalIgnoreCase
+            )
         );
 
     internal static MethodInfo TargetMethod() =>

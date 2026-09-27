@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
+    <LoadingProgress.Title>Прогресс загрузки</LoadingProgress.Title>
     <LoadingProgress.ExecuteToExecuteWhenFinished>Прогресс загрузки: Выполнение задач отложенной инициализации</LoadingProgress.ExecuteToExecuteWhenFinished>
     <LoadingProgress.CallAll>Прогресс загрузки: Вызов всех статических конструкторов</LoadingProgress.CallAll>
     <LoadingProgress.ModHashChanged>(Список модов изменился с последнего запуска игры; оценка может быть неточной.)</LoadingProgress.ModHashChanged>
