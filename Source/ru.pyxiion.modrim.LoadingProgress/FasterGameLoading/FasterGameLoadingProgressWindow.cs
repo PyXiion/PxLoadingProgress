@@ -6,33 +6,21 @@ internal static class FasterGameLoadingProgressWindow
 {
     private static readonly Vector2 BaseWindowSize = new(776f, 110f);
 
-    internal static Vector2 WindowSize
-    {
-        get
-        {
-            if (
-                !FasterGameLoadingUtils.HasFasterGameLoading
-                || !FasterGameLoadingUtils.EarlyModContentLoading
-                || FasterGameLoadingUtils.FasterGameLoadingEarlyModContentLoadingIsFinished
-            )
-            {
-                return Vector2.zero;
-            }
+    /// <summary>
+    /// Shown only while Faster Game Loading is loading mod content early in the background.
+    /// </summary>
+    private static bool IsVisible =>
+        FasterGameLoadingUtils.HasFasterGameLoading
+        && FasterGameLoadingUtils.EarlyModContentLoading
+        && !FasterGameLoadingUtils.FasterGameLoadingEarlyModContentLoadingIsFinished;
 
-            var windowSize = BaseWindowSize;
-            return windowSize;
-        }
-    }
+    internal static Vector2 WindowSize => IsVisible ? BaseWindowSize : Vector2.zero;
 
     internal static ModContentPack? LoadingMod { get; set; }
 
     internal static void DrawWindow(Rect statusRect)
     {
-        if (
-            !FasterGameLoadingUtils.HasFasterGameLoading
-            || !FasterGameLoadingUtils.EarlyModContentLoading
-            || FasterGameLoadingUtils.FasterGameLoadingEarlyModContentLoadingIsFinished
-        )
+        if (!IsVisible)
         {
             return;
         }
@@ -50,11 +38,7 @@ internal static class FasterGameLoadingProgressWindow
 
     internal static void DrawContents(Rect rect)
     {
-        if (
-            !FasterGameLoadingUtils.HasFasterGameLoading
-            || !FasterGameLoadingUtils.EarlyModContentLoading
-            || FasterGameLoadingUtils.FasterGameLoadingEarlyModContentLoadingIsFinished
-        )
+        if (!IsVisible)
         {
             return;
         }
@@ -103,8 +87,10 @@ internal static class FasterGameLoadingProgressWindow
 
         Widgets_Progressbar.DrawHorizontalProgressBar(
             progressRect,
-            FasterGameLoadingUtils.LoadedMods!.Count,
-            LoadedModManager.RunningModsListForReading.Count
+            FasterGameLoadingUtils.LoadedMods?.Count ?? 0,
+            LoadedModManager.RunningModsListForReading.Count,
+            customBarColor: LoadingProgressMod.Settings.ProgressBarColor,
+            customSmallBarColor: LoadingProgressMod.Settings.SmallBarColor
         );
     }
 }

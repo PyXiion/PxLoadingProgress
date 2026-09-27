@@ -64,7 +64,7 @@ internal sealed partial class LoadingProgressWindow
         loadingProgressRect.width -= 2 * HorizontalMargin;
         loadingProgressRect.height = Text.LineHeight;
 
-        Widgets.Label(loadingProgressRect, "Loading progress");
+        Widgets.Label(loadingProgressRect, Translations.GetTranslation("LoadingProgress.Title"));
 
         var loadingActivityRect = loadingProgressRect;
         loadingProgressRect.y += loadingProgressRect.height + VerticalWidgetMargin;
@@ -209,7 +209,21 @@ internal sealed partial class LoadingProgressWindow
         Text.Anchor = TextAnchor.UpperLeft;
     }
 
-    private static Color TimeBarColor => LoadingProgressMod.Settings.ProgressBarColor.Darken(0.2f);
+    private static Color _timeBarBaseColor;
+    private static Color _timeBarColor;
+    private static Color TimeBarColor
+    {
+        get
+        {
+            var baseColor = LoadingProgressMod.Settings.ProgressBarColor;
+            if (baseColor != _timeBarBaseColor || _timeBarColor == default)
+            {
+                _timeBarBaseColor = baseColor;
+                _timeBarColor = baseColor.Darken(0.2f);
+            }
+            return _timeBarColor;
+        }
+    }
     private static readonly Color TimerSmallBarColor = Color
         .white.Darken(0.2f)
         .ToTransparent(0.75f);

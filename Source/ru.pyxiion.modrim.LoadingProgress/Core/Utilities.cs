@@ -61,6 +61,16 @@ internal static class Utilities
         return Color.HSVToRGB(h, s, v);
     }
 
+    private static string? _clampCacheText;
+    private static float _clampCacheWidth;
+    private static GameFont _clampCacheFont;
+    private static string _clampCacheResult = string.Empty;
+
+    /// <summary>
+    /// Clamps rich text to fit <paramref name="rect"/>, adding an ellipsis and closing any tags
+    /// left open. Drawn on every OnGUI pass, so the last result is cached and the cut-off point
+    /// is found with a binary search instead of measuring after every character.
+    /// </summary>
     public static string ClampTextWithEllipsisMarkupAware(Rect rect, string text)
     {
         if (text.Length <= 4)
@@ -68,16 +78,34 @@ internal static class Utilities
             return text;
         }
 
-        if (Text.CalcSize(text).x <= rect.width - 13f)
+        var maxWidth = rect.width - 13f;
+        if (
+            _clampCacheText == text
+            && _clampCacheWidth == maxWidth
+            && _clampCacheFont == Text.Font
+        )
+        {
+            return _clampCacheResult;
+        }
+
+        var result = ClampTextWithEllipsisMarkupAwareUncached(maxWidth, text);
+        _clampCacheText = text;
+        _clampCacheWidth = maxWidth;
+        _clampCacheFont = Text.Font;
+        _clampCacheResult = result;
+        return result;
+    }
+
+    private static string ClampTextWithEllipsisMarkupAwareUncached(float maxWidth, string text)
+    {
+        if (Text.CalcSize(text).x <= maxWidth)
         {
             return text;
         }
 
-        var output = new StringBuilder();
-        var stack = new Stack<string>();
-        var visibleChars = 0;
-
-        // forward pass to capture tag info
+        // Split into tags and visible characters.
+        List<(string? tag, char c)> tokens = [];
+        var visibleCount = 0;
         for (var i = 0; i < text.Length; i++)
         {
             if (text[i] == '<')
@@ -87,41 +115,79 @@ internal static class Utilities
                 {
                     break;
                 }
-
-                var tag = text.Substring(i, closing - i + 1);
-                _ = output.Append(tag);
-
-                if (!tag.StartsWith("</", StringComparison.Ordinal))
-                {
-                    var spaceIdx = tag.IndexOf(' ', StringComparison.Ordinal);
-                    var tagNameEnd = spaceIdx != -1 ? spaceIdx : tag.Length - 1;
-                    stack.Push(tag[1..tagNameEnd]);
-                }
-                else if (stack.Count > 0)
-                {
-                    _ = stack.Pop();
-                }
+                tokens.Add((text.Substring(i, closing - i + 1), default));
                 i = closing;
             }
             else
             {
-                _ = output.Append(text[i]);
-                visibleChars++;
-                if (Text.CalcSize(output.ToString() + "...").x > rect.width - 13f)
+                tokens.Add((null, text[i]));
+                visibleCount++;
+            }
+        }
+
+        // Largest number of visible characters that still fits (width grows with the count).
+        int low = 0,
+            high = visibleCount;
+        while (low < high)
+        {
+            var mid = (low + high + 1) / 2;
+            if (Text.CalcSize(BuildClampedText(tokens, mid, false)).x <= maxWidth)
+            {
+                low = mid;
+            }
+            else
+            {
+                high = mid - 1;
+            }
+        }
+
+        return BuildClampedText(tokens, low, true);
+    }
+
+    private static string BuildClampedText(
+        List<(string? tag, char c)> tokens,
+        int visibleChars,
+        bool closeTags
+    )
+    {
+        var output = new StringBuilder();
+        var stack = closeTags ? new Stack<string>() : null;
+        var visible = 0;
+        foreach (var (tag, c) in tokens)
+        {
+            if (tag == null)
+            {
+                if (visible == visibleChars)
                 {
-                    output.Length -= 1; // remove last character
                     break;
                 }
+                _ = output.Append(c);
+                visible++;
+                continue;
+            }
+
+            _ = output.Append(tag);
+            if (stack == null)
+            {
+                continue;
+            }
+            if (!tag.StartsWith("</", StringComparison.Ordinal))
+            {
+                // <color=#fff> and <size=12> close as </color> and </size>
+                var nameEnd = tag.IndexOfAny([' ', '=', '>'], 1);
+                stack.Push(tag[1..nameEnd]);
+            }
+            else if (stack.Count > 0)
+            {
+                _ = stack.Pop();
             }
         }
 
         _ = output.Append("...");
-        // close tags
-        while (stack.Count > 0)
+        while (stack is { Count: > 0 })
         {
-            _ = output.Append("</" + stack.Pop() + ">");
+            _ = output.Append("</").Append(stack.Pop()).Append('>');
         }
-
         return output.ToString();
     }
 
@@ -221,4 +287,19 @@ internal static class Utilities
         this IDictionary<TKey, TValue> dictionary
     )
         where TKey : notnull => new(dictionary);
+}
+
+/// <summary>
+/// Compares objects by reference; <c>System.Collections.Generic.ReferenceEqualityComparer</c>
+/// isn't available on .NET Framework.
+/// </summary>
+internal sealed class ReferenceEqualityComparer : IEqualityComparer<object>
+{
+    public static readonly ReferenceEqualityComparer Instance = new();
+
+    private ReferenceEqualityComparer() { }
+
+    public new bool Equals(object? x, object? y) => ReferenceEquals(x, y);
+
+    public int GetHashCode(object obj) => RuntimeHelpers.GetHashCode(obj);
 }

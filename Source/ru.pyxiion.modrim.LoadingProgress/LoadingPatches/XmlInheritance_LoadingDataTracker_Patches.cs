@@ -16,8 +16,7 @@ internal static class XmlInheritance_LoadingDataTracker_Patches
 
         if (mod != null)
         {
-            LoadingDataTracker.Previous = LoadingDataTracker.Current;
-            LoadingDataTracker.Current = mod.Name;
+            LoadingDataTracker.SwitchTo(mod.Name);
         }
     }
 

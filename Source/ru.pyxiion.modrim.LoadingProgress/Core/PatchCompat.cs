@@ -23,6 +23,12 @@ internal static class PatchCompat
         PatchKinds warnKinds = PatchKinds.All
     )
     {
+        var patches = Harmony.GetPatchInfo(method);
+        if (patches == null)
+        {
+            return;
+        }
+
         HashSet<Assembly> ignoredAssemblySet =
         [
             Assembly.GetExecutingAssembly(),
@@ -30,134 +36,53 @@ internal static class PatchCompat
         ];
         HashSet<MethodBase> ignoredMethodsSet = [.. ignoredMethods ?? []];
 
-        var patches = Harmony.GetPatchInfo(method);
-        if (patches != null)
+        (PatchKinds kind, IEnumerable<Patch> patches, string label)[] patchGroups =
+        [
+            (PatchKinds.Prefix, patches.Prefixes, "prefixes"),
+            (PatchKinds.Transpiler, patches.Transpilers, "transpilers"),
+            (PatchKinds.Postfix, patches.Postfixes, "postfixes"),
+            (PatchKinds.Finalizer, patches.Finalizers, "finalizers"),
+        ];
+
+        var problematic = patchGroups
+            .Where(group => (warnKinds & group.kind) != 0)
+            .Select(group =>
+                (
+                    group.label,
+                    methods: group
+                        .patches.Select(patch => patch.PatchMethod)
+                        .Where(patchMethod =>
+                            !ignoredAssemblySet.Contains(patchMethod.DeclaringType.Assembly)
+                            && !ignoredMethodsSet.Contains(patchMethod)
+                        )
+                        .ToList()
+                )
+            )
+            .Where(group => group.methods.Count > 0)
+            .ToList();
+        if (problematic.Count == 0)
         {
-            var potentiallyProblematicPrefixes = CollectPotentiallyProblematicPatches(
-                warnKinds,
-                PatchKinds.Prefix,
-                patches.Prefixes,
-                ignoredAssemblySet,
-                ignoredMethodsSet
-            );
-
-            var potentiallyProblematicTranspilers = CollectPotentiallyProblematicPatches(
-                warnKinds,
-                PatchKinds.Transpiler,
-                patches.Transpilers,
-                ignoredAssemblySet,
-                ignoredMethodsSet
-            );
-
-            var potentiallyProblematicPostfixes = CollectPotentiallyProblematicPatches(
-                warnKinds,
-                PatchKinds.Postfix,
-                patches.Postfixes,
-                ignoredAssemblySet,
-                ignoredMethodsSet
-            );
-
-            var potentiallyProblematicFinalizers = CollectPotentiallyProblematicPatches(
-                warnKinds,
-                PatchKinds.Finalizer,
-                patches.Finalizers,
-                ignoredAssemblySet,
-                ignoredMethodsSet
-            );
-
-            var totalCount =
-                (potentiallyProblematicPrefixes?.Count ?? 0)
-                + (potentiallyProblematicTranspilers?.Count ?? 0)
-                + (potentiallyProblematicPostfixes?.Count ?? 0)
-                + (potentiallyProblematicFinalizers?.Count ?? 0);
-            if (totalCount > 0)
-            {
-                var sb = new StringBuilder();
-                _ = sb.Append("These patches may not work as expected because ")
-                    .Append($"Loading Progress replaces {method.DeclaringType}:{method}.\n");
-
-                if (stillCallsOriginal)
-                {
-                    _ = sb.Append("Note: The original method is still called; unless patches are ");
-                    _ = sb.Append("extremely timing-sensitive, they should still work.\n");
-                }
-
-                AppendPatchWarning(
-                    sb,
-                    warnKinds,
-                    PatchKinds.Prefix,
-                    potentiallyProblematicPrefixes,
-                    "prefixes"
-                );
-                AppendPatchWarning(
-                    sb,
-                    warnKinds,
-                    PatchKinds.Transpiler,
-                    potentiallyProblematicTranspilers,
-                    "transpilers"
-                );
-                AppendPatchWarning(
-                    sb,
-                    warnKinds,
-                    PatchKinds.Postfix,
-                    potentiallyProblematicPostfixes,
-                    "postfixes"
-                );
-                AppendPatchWarning(
-                    sb,
-                    warnKinds,
-                    PatchKinds.Finalizer,
-                    potentiallyProblematicFinalizers,
-                    "finalizers"
-                );
-
-                LoadingProgressMod.Warning(sb.ToString().TrimEnd());
-            }
+            return;
         }
-    }
 
-    private static void AppendPatchWarning(
-        StringBuilder sb,
-        PatchKinds warnFlags,
-        PatchKinds warnCheckedFlag,
-        List<MethodInfo>? methods,
-        string label
-    )
-    {
-        if ((warnFlags & warnCheckedFlag) != 0 && methods != null && methods.Count > 0)
+        var sb = new StringBuilder();
+        _ = sb.Append("These patches may not work as expected because ")
+            .Append($"Loading Progress replaces {method.DeclaringType}:{method}.\n");
+
+        if (stillCallsOriginal)
         {
-            _ = sb.Append($"Potentially problematic {label} ");
-            _ = sb.Append($"({methods.Count}):\n  - ")
+            _ = sb.Append("Note: The original method is still called; unless patches are ");
+            _ = sb.Append("extremely timing-sensitive, they should still work.\n");
+        }
+
+        foreach (var (label, methods) in problematic)
+        {
+            _ = sb.Append($"Potentially problematic {label} ")
+                .Append($"({methods.Count}):\n  - ")
                 .Append(string.Join("\n  - ", methods.Select(m => $"{m.DeclaringType}:{m}")))
                 .Append('\n');
         }
-    }
 
-    private static List<MethodInfo>? CollectPotentiallyProblematicPatches(
-        PatchKinds warnFlags,
-        PatchKinds warnCheckedFlag,
-        IEnumerable<Patch> patchesEnumerable,
-        HashSet<Assembly> ignoredAssemblySet,
-        HashSet<MethodBase> ignoredMethodsSet
-    )
-    {
-        List<MethodInfo>? potentiallyProblematicPatches = null;
-        if ((warnFlags & warnCheckedFlag) != 0)
-        {
-            potentiallyProblematicPatches = [];
-            foreach (var patch in patchesEnumerable)
-            {
-                if (
-                    ignoredAssemblySet.Contains(patch.PatchMethod.DeclaringType.Assembly)
-                    || ignoredMethodsSet.Contains(patch.PatchMethod)
-                )
-                {
-                    continue;
-                }
-                potentiallyProblematicPatches.Add(patch.PatchMethod);
-            }
-        }
-
-        return potentiallyProblematicPatches;
+        LoadingProgressMod.Warning(sb.ToString().TrimEnd());
     }
 }

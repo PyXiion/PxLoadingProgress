@@ -67,6 +67,32 @@ internal sealed partial class LoadingProgressWindow
         params object[] args
     ) => Translations.GetTranslation($"LoadingProgress.Stage.{stage}.{secondary}", args);
 
+    // "XmlInheritance.TryRegister" fires once per XML node, so it's handled directly by the fast
+    // path in CurrentLoadingActivity rather than by the generic rule search. It still lives in
+    // StageRules so the rule pruning keeps working as before.
+    private static readonly StageRule XmlInheritanceTryRegisterRule = new(
+        value =>
+            CurrentStage == LoadingStage.ParseAndProcessXml
+            && value == "XmlInheritance.TryRegister",
+        value => AdvanceXmlInheritanceTryRegister(),
+        LoadingStage.ParseAndProcessXml,
+        activity =>
+            GetStageTranslationWithSecondary(
+                LoadingStage.ParseAndProcessXml,
+                $"ForMod",
+                LoadingDataTracker.Current ?? ""
+            )
+    );
+
+    private static void AdvanceXmlInheritanceTryRegister()
+    {
+        CurrentStageRule = XmlInheritanceTryRegisterRule;
+        if (StageProgress is (float current, float max))
+        {
+            StageProgress = ((int)current + 1, max);
+        }
+    }
+
     private static readonly List<StageRule> StageRules =
     [
         new(value => false, value => { }, LoadingStage.Initializing),
@@ -227,25 +253,7 @@ internal sealed partial class LoadingProgressWindow
             },
             LoadingStage.ParseAndProcessXml
         ),
-        new(
-            value =>
-                CurrentStage == LoadingStage.ParseAndProcessXml
-                && value == "XmlInheritance.TryRegister",
-            value =>
-            {
-                if (StageProgress is (float current, float max))
-                {
-                    StageProgress = ((int)current + 1, max);
-                }
-            },
-            LoadingStage.ParseAndProcessXml,
-            activity =>
-                GetStageTranslationWithSecondary(
-                    LoadingStage.ParseAndProcessXml,
-                    $"ForMod",
-                    LoadingDataTracker.Current ?? ""
-                )
-        ),
+        XmlInheritanceTryRegisterRule,
         new(
             value =>
                 CurrentStage <= LoadingStage.ParseAndProcessXml
@@ -671,6 +679,10 @@ internal sealed partial class LoadingProgressWindow
                 LoadingDataTracker.Current = null;
 
                 currentStage = value;
+
+                // A stage transition should be visible right away, even if it lands inside
+                // what would otherwise be a batched, unpainted 0.1s burst of yields.
+                LongEventHandler_UpdateCurrentEnumeratorEvent_Patches.RequestImmediateRepaint();
             }
         }
     }
@@ -686,62 +698,19 @@ internal sealed partial class LoadingProgressWindow
         get => _currentLoadingActivity;
         set
         {
-            // Skip very frequent messages (10k-100k+ in big mod packs) to avoid the cost of
-            // the processing below
             var currentStage = CurrentStage;
-#pragma warning disable IDE0010
-            switch (currentStage)
+            if (HandleFrequentLabel(currentStage, value))
             {
-                case LoadingStage.ParseAndProcessXml:
-                    if (value is "assetlookup.TryGetValue" or "XmlInheritance.TryRegister")
-                    {
-                        return;
-                    }
-                    break;
-                case LoadingStage.XmlInheritanceResolve:
-                    if (
-                        value.StartsWith(
-                            "RecursiveNodeCopyOverwriteElements",
-                            StringComparison.Ordinal
-                        )
-                    )
-                    {
-                        return;
-                    }
-                    break;
-                case LoadingStage.LoadingDefs:
-                    if (
-                        value.StartsWith("RegisterObjectWantsCrossRef", StringComparison.Ordinal)
-                        || value == "RegisterListWantsCrossRef"
-                    )
-                    {
-                        return;
-                    }
-                    break;
-                case LoadingStage.ResolveCrossReferencesBetweenNonImpliedDefsStage1:
-                    if (value == "TryResolveDef")
-                    {
-                        return;
-                    }
-                    break;
-                case LoadingStage.GenerateImpliedDefs:
-                    if (value == "RegisterListWantsCrossRef")
-                    {
-                        return;
-                    }
-                    break;
-                case LoadingStage.ResolveReferences:
-                    if (value == "Resolver call")
-                    {
-                        return;
-                    }
-                    break;
+                return;
             }
-#pragma warning restore IDE0010
 
-            // This one is in so many stages that it's not worth differentiating
-            if (value == "TryDoPostLoad")
+            var unmatched = GetUnmatchedLabels(currentStage);
+            if (unmatched.Contains(value))
             {
+                if (Prefs.DevMode)
+                {
+                    RecordUnmatchedStageActivity(value);
+                }
                 return;
             }
 
@@ -775,25 +744,124 @@ internal sealed partial class LoadingProgressWindow
                 }
             }
 
+            if (unmatched.Count < MaxUnmatchedLabels)
+            {
+                _ = unmatched.Add(value);
+            }
+
             if (Prefs.DevMode)
             {
-                lock (_unmatchedStageActivitiesLock)
+                RecordUnmatchedStageActivity(value);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Skips very frequent messages (10k-100k+ in big mod packs) to avoid the cost of the
+    /// generic rule search. Returns true if the label was fully handled.
+    /// </summary>
+    private static bool HandleFrequentLabel(LoadingStage currentStage, string value)
+    {
+#pragma warning disable IDE0010
+        switch (currentStage)
+        {
+            case LoadingStage.ParseAndProcessXml:
+                if (value == "assetlookup.TryGetValue")
                 {
-                    if (!_unmatchedStageActivities.TryGetValue(value, out var tuple))
-                    {
-                        _unmatchedStageActivities.Add(value, (1, [CurrentStage]));
-                    }
-                    else
-                    {
-                        _ = tuple.Item2.Add(CurrentStage);
-                        _unmatchedStageActivities[value] = (tuple.Item1 + 1, tuple.Item2);
-                    }
+                    return true;
                 }
+                if (value == "XmlInheritance.TryRegister")
+                {
+                    AdvanceXmlInheritanceTryRegister();
+                    return true;
+                }
+                break;
+            case LoadingStage.XmlInheritanceResolve:
+                if (
+                    value.StartsWith(
+                        "RecursiveNodeCopyOverwriteElements",
+                        StringComparison.Ordinal
+                    )
+                )
+                {
+                    return true;
+                }
+                break;
+            case LoadingStage.LoadingDefs:
+                if (
+                    value.StartsWith("RegisterObjectWantsCrossRef", StringComparison.Ordinal)
+                    || value == "RegisterListWantsCrossRef"
+                )
+                {
+                    return true;
+                }
+                break;
+            case LoadingStage.ResolveCrossReferencesBetweenNonImpliedDefsStage1:
+                if (value == "TryResolveDef")
+                {
+                    return true;
+                }
+                break;
+            case LoadingStage.GenerateImpliedDefs:
+                if (value == "RegisterListWantsCrossRef")
+                {
+                    return true;
+                }
+                break;
+            case LoadingStage.ResolveReferences:
+                if (value == "Resolver call")
+                {
+                    return true;
+                }
+                break;
+        }
+#pragma warning restore IDE0010
+
+        // This one is in so many stages that it's not worth differentiating
+        return value == "TryDoPostLoad";
+    }
+
+    /// <summary>
+    /// Most labels are string literals that repeat thousands of times without matching any
+    /// rule; they're remembered (by reference, so lookups are cheap) until the stage changes.
+    /// </summary>
+    private static HashSet<string> GetUnmatchedLabels(LoadingStage currentStage)
+    {
+        var unmatched = _unmatchedLabels ??= new(ReferenceEqualityComparer.Instance);
+        if (_unmatchedLabelsStage != currentStage)
+        {
+            unmatched.Clear();
+            _unmatchedLabelsStage = currentStage;
+        }
+        return unmatched;
+    }
+
+    private static void RecordUnmatchedStageActivity(string value)
+    {
+        lock (_unmatchedStageActivitiesLock)
+        {
+            if (!_unmatchedStageActivities.TryGetValue(value, out var tuple))
+            {
+                _unmatchedStageActivities.Add(value, (1, [CurrentStage]));
+            }
+            else
+            {
+                _ = tuple.Item2.Add(CurrentStage);
+                _unmatchedStageActivities[value] = (tuple.Item1 + 1, tuple.Item2);
             }
         }
     }
 
     internal static (float currentValue, float maxValue)? StageProgress { get; set; }
+
+    private const int MaxUnmatchedLabels = 4096;
+
+    // DeepProfiler.Start is called from several threads, so each gets its own cache.
+    [ThreadStatic]
+    private static HashSet<string>? _unmatchedLabels;
+
+    [ThreadStatic]
+    private static LoadingStage _unmatchedLabelsStage;
 
     private static readonly object _unmatchedStageActivitiesLock = new();
     private static readonly Dictionary<

@@ -1,3 +1,12 @@
 /**/obj
 
 /1.*/Assemblies
+
+# Editor/IDE files
+.vscode/
+.idea/
+*.code-workspace
+
+# `just zip` output
+/package/
+/PxLoadingProgress.zip

@@ -19,22 +19,26 @@ internal static class DefDatabase_AddAllInMods_Patches
         new(OpCodes.Call, _method_GenGeneric_InvokeStaticMethodOnGenericType),
     ];
 
-    internal static bool Prepare() => TargetMethods().Count() == 1;
-
-    internal static IEnumerable<MethodBase> TargetMethods()
+    // Harmony calls Prepare and TargetMethods separately; scan the IL only once.
+    private static readonly Lazy<List<MethodBase>> _targetMethods = new(() =>
     {
-        var methods = Utilities.FindMethodsDoing(typeof(PlayDataLoader), toMatch).ToList();
+        var methods = Utilities
+            .FindMethodsDoing(typeof(PlayDataLoader), toMatch)
+            .Cast<MethodBase>()
+            .ToList();
         if (methods.Count != 1)
         {
             LoadingProgressMod.Error(
                 "Could not find call to GenGeneric.InvokeStaticMethodOnGenericType in PlayDataLoader"
             );
+            return [];
         }
-        else
-        {
-            yield return methods.First();
-        }
-    }
+        return methods;
+    });
+
+    internal static bool Prepare() => _targetMethods.Value.Count == 1;
+
+    internal static IEnumerable<MethodBase> TargetMethods() => _targetMethods.Value;
 
     internal static void Prefix() =>
         StartupImpactProfilerUtil.StartBaseGameProfiler(

@@ -25,7 +25,7 @@ internal static class FasterGameLoadingUtils
             _loadedMods ??=
                 AccessTools
                     .Field("FasterGameLoading.ModContentPack_ReloadContentInt_Patch:loadedMods")
-                    .GetValue(null) as HashSet<ModContentPack>;
+                    ?.GetValue(null) as HashSet<ModContentPack>;
             return _loadedMods;
         }
     }
