@@ -4,7 +4,7 @@ internal static class StartupImpactProfilerUtil
 {
     public static void StartModProfiler(ModContentPack? mod, string key)
     {
-        if (mod == null)
+        if (!Profiler.Enabled || mod == null)
         {
             return;
         }
@@ -15,7 +15,7 @@ internal static class StartupImpactProfilerUtil
 
     public static void StopModProfiler(ModContentPack? mod, string key)
     {
-        if (mod == null)
+        if (!Profiler.Enabled || mod == null)
         {
             return;
         }
@@ -24,13 +24,21 @@ internal static class StartupImpactProfilerUtil
         _ = info?.Stop(key);
     }
 
-    public static void StartBaseGameProfiler(string key) =>
-        // LoadingProgressMod.DevMessage($"Starting base game profiler for {key}");
-        LoadingProgressMod.instance.StartupImpact.BaseGameProfiler.Start(key);
+    public static void StartBaseGameProfiler(string key)
+    {
+        if (Profiler.Enabled)
+        {
+            LoadingProgressMod.instance.StartupImpact.BaseGameProfiler.Start(key);
+        }
+    }
 
-    public static void StopBaseGameProfiler(string key) =>
-        // LoadingProgressMod.DevMessage($"Stopping base game profiler for {key}");
-        _ = LoadingProgressMod.instance.StartupImpact.BaseGameProfiler.Stop(key);
+    public static void StopBaseGameProfiler(string key)
+    {
+        if (Profiler.Enabled)
+        {
+            _ = LoadingProgressMod.instance.StartupImpact.BaseGameProfiler.Stop(key);
+        }
+    }
 
     /// <summary>
     /// Translates a category string, supporting optional parameter after '|'.

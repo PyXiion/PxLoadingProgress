@@ -1,9 +1,11 @@
-﻿namespace ru.pyxiion.modrim.LoadingProgress.StartupImpact;
+using System.Diagnostics;
+
+namespace ru.pyxiion.modrim.LoadingProgress.StartupImpact;
 
 internal sealed class StartupImpact
 {
-    private int _activeThreadId;
-    private readonly ProfilerStopwatch _loadingProfiler;
+    private static int _activeThreadId;
+    private readonly Stopwatch _loadingStopwatch = new();
 
     public ModInfoList Modlist { get; } = new();
 
@@ -18,11 +20,12 @@ internal sealed class StartupImpact
         _activeThreadId = Environment.CurrentManagedThreadId;
 
         BaseGameProfiler = new Profiler("base game");
-        _loadingProfiler = new ProfilerStopwatch("loading");
 
-        if (LoadingProgressMod.Settings.TrackStartupLoadingImpact)
+        Profiler.Enabled = LoadingProgressMod.Settings.TrackStartupLoadingImpact;
+        if (Profiler.Enabled)
         {
-            _loadingProfiler.Start("loading");
+            _loadingStopwatch.Start();
+            ModClassProfiler.Active = true;
         }
     }
 
@@ -33,13 +36,11 @@ internal sealed class StartupImpact
         if (!_loadingTimeMeasured)
         {
             _loadingTimeMeasured = true;
-            _ = _loadingProfiler.Stop("loading");
-            TotalLoadingTime = _loadingProfiler.Total;
+            _loadingStopwatch.Stop();
+            TotalLoadingTime = (float)_loadingStopwatch.Elapsed.TotalMilliseconds;
 
-            LoadingProgressMod.instance.harmony.UnpatchCategory(
-                Assembly.GetExecutingAssembly(),
-                "StartupImpact"
-            );
+            // Unpatching is deferred to the main menu (see LoadingProgressMod.OnMainMenu) so it
+            // doesn't add to the loading time; the patched methods are loading-only anyway.
 
             // FinishLoading can run off the main thread — defer the save.
             LongEventHandler.ExecuteWhenFinished(static () =>
@@ -60,7 +61,9 @@ internal sealed class StartupImpact
         }
     }
 
+#pragma warning disable CA1822 // Mark members as static
     public void UpdateActiveThreadId() => _activeThreadId = Environment.CurrentManagedThreadId;
+#pragma warning restore CA1822 // Mark members as static
 
-    public bool IsActiveThread() => Environment.CurrentManagedThreadId == _activeThreadId;
+    public static bool IsActiveThread() => Environment.CurrentManagedThreadId == _activeThreadId;
 }

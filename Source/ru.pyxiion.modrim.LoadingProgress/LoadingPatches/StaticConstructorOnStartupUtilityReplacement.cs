@@ -30,14 +30,15 @@ internal sealed class StaticConstructorOnStartupUtilityReplacement
             LoadingProgressWindow.StageProgress = (i + 1, list.Count);
             yield return null;
 
-            var info = LoadingProgressMod.instance.StartupImpact.Modlist.GetModInfoFor(
-                Utilities.FindModByAssembly(item.Assembly)
-            );
+            var info = StartupImpact.Profiler.Enabled
+                ? LoadingProgressMod.instance.StartupImpact.Modlist.GetModInfoFor(
+                    Utilities.FindModByAssembly(item.Assembly)
+                )
+                : null;
             info?.Start("LoadingProgress.StartupImpact.StaticConstructorOnStartupUtilityCallAll");
 
             try
             {
-                var now = DateTime.Now;
                 //LoadingProgressMod.Debug($"About to run static constructor for {item} @ {now:HH:mm:ss.fff}");
                 RuntimeHelpers.RunClassConstructor(item.TypeHandle);
                 //LoadingProgressMod.Debug($"Finished running static constructor for {item} @ {DateTime.Now:HH:mm:ss.fff}; took {DateTime.Now - now:mm\\:ss\\.fff}");

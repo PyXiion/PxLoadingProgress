@@ -27,7 +27,42 @@ internal sealed class LoadingProgressMod : Mod
         Message("Loading Progress initialized! Enjoy the rest of your loading experience!");
     }
 
-    public static Settings Settings => instance.GetSettings<Settings>();
+    // Read on hot paths during loading; GetSettings does a type check on every call.
+    public static Settings Settings => field ??= instance.GetSettings<Settings>();
+
+    private static bool _loadingPatchesRemoved;
+
+    /// <summary>
+    /// Called every frame from the main menu. The first time loading is found to be finished,
+    /// removes the patches that only matter during loading, so they cost nothing in-game.
+    /// Doing it here rather than at the end of loading keeps the cost out of the loading time.
+    /// </summary>
+    internal static void RemoveLoadingPatchesIfFinished()
+    {
+        if (_loadingPatchesRemoved || LoadingProgressWindow.CurrentStage != LoadingStage.Finished)
+        {
+            return;
+        }
+        _loadingPatchesRemoved = true;
+
+        try
+        {
+            var harmony = instance.harmony;
+            harmony.Unpatch(
+                AccessTools.Method(typeof(DeepProfiler), nameof(DeepProfiler.Start)),
+                HarmonyPatchType.Prefix,
+                harmony.Id
+            );
+            if (Settings.TrackStartupLoadingImpact)
+            {
+                harmony.UnpatchCategory(Assembly.GetExecutingAssembly(), "StartupImpact");
+            }
+        }
+        catch (Exception e)
+        {
+            Exception("Failed to remove loading-only patches", e);
+        }
+    }
 
     public override void DoSettingsWindowContents(Rect inRect) =>
         Settings.DoSettingsWindowContents(inRect);

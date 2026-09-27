@@ -7,6 +7,5 @@ internal static class LoadingDataTracker
     public static bool ModChanged => Previous != Current;
 
     internal static Def? LastDef;
-    internal static int WantedRefTryResolveCount;
     internal static int WantedRefApplyCount;
 }

@@ -9,6 +9,8 @@ internal static class VersionControl_DrawInfoInCorner_Patch
 
     internal static void Finalizer()
     {
+        LoadingProgressMod.RemoveLoadingPatchesIfFinished();
+
         if (!LoadingProgressMod.Settings.ShowLastLoadingTimeInCorner)
         {
             return;

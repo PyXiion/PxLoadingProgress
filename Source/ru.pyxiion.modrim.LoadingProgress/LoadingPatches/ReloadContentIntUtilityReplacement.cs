@@ -6,7 +6,9 @@ internal sealed class ReloadContentIntReplacement
 {
     public static IEnumerable ReloadContentInt(ModContentPack modContentPack)
     {
-        var info = LoadingProgressMod.instance.StartupImpact.Modlist.GetModInfoFor(modContentPack);
+        var info = StartupImpact.Profiler.Enabled
+            ? LoadingProgressMod.instance.StartupImpact.Modlist.GetModInfoFor(modContentPack)
+            : null;
 
         yield return "audio clips";
         info?.Start("LoadingProgress.StartupImpact.ModContentPackReloadContentInt.AudioClips");

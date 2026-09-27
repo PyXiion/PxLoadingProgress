@@ -40,6 +40,70 @@ internal static partial class LongEventHandler_ExecuteToExecuteWhenFinished_Patc
         return true;
     }
 
+    private static readonly Lazy<MethodInfo?> StaticConstructorOnStartupUtilityCallAllMethod =
+        new(() =>
+        {
+            var methods = StaticConstructorOnStartupCallAllFinder.FindMethodCalling().ToList();
+            if (methods.Count == 1)
+            {
+                return methods[0];
+            }
+            LoadingProgressMod.Error(
+                "Could not find call to StaticConstructorOnStartupUtility.CallAll "
+                    + "in PlayDataLoader; "
+                    + "static constructor execution will be done without showing progress."
+            );
+            return null;
+        });
+
+    private static readonly Lazy<(
+        MethodInfo? method,
+        FieldInfo? modContentPackField
+    )> ReloadContentIntMethod = new(() =>
+    {
+        var methodFields = ReloadContentIntFinder.FindMethodCalling().ToList();
+        if (methodFields.Count == 1)
+        {
+            return methodFields[0];
+        }
+        LoadingProgressMod.Error(
+            "Could not find call to ModContentPack.ReloadContentInt in ModContentPack; "
+                + "reloading content will be done without showing detailed progress."
+        );
+        return (null, null);
+    });
+
+    private static void RunProfiled(Action action, string label)
+    {
+        var methodAssembly = action.Method.DeclaringType.Assembly;
+        var key = "LoadingProgress.StartupImpact.ExecuteToExecuteWhenFinished|" + label;
+        if (methodAssembly.FullName.StartsWith("Assembly-CSharp", StringComparison.Ordinal))
+        {
+            StartupImpactProfilerUtil.StartBaseGameProfiler(key);
+            try
+            {
+                action();
+            }
+            finally
+            {
+                StartupImpactProfilerUtil.StopBaseGameProfiler(key);
+            }
+        }
+        else
+        {
+            var assemblyMod = Utilities.FindModByAssembly(methodAssembly);
+            StartupImpactProfilerUtil.StartModProfiler(assemblyMod, key);
+            try
+            {
+                action();
+            }
+            finally
+            {
+                StartupImpactProfilerUtil.StopModProfiler(assemblyMod, key);
+            }
+        }
+    }
+
     internal static IEnumerable ExecuteToExecuteWhenFinished()
     {
         // Once we start with the ExecuteToExecuteWhenFinished,
@@ -60,35 +124,10 @@ internal static partial class LongEventHandler_ExecuteToExecuteWhenFinished_Patc
             fasterGameLoadingLoadedMods = FasterGameLoadingUtils.LoadedMods;
         }
 
-        var methods = StaticConstructorOnStartupCallAllFinder.FindMethodCalling().ToList();
-        MethodInfo? staticConstructorOnStartupUtilityCallAllMethod = null;
-        if (methods.Count != 1)
-        {
-            LoadingProgressMod.Error(
-                "Could not find call to StaticConstructorOnStartupUtility.CallAll "
-                    + "in PlayDataLoader; "
-                    + "static constructor execution will be done without showing progress."
-            );
-        }
-        else
-        {
-            staticConstructorOnStartupUtilityCallAllMethod = methods.First();
-        }
-
-        var methodFields = ReloadContentIntFinder.FindMethodCalling().ToList();
-        MethodInfo? reloadContentIntMethod = null;
-        FieldInfo? reloadContentIntmodContentPackField = null;
-        if (methodFields.Count != 1)
-        {
-            LoadingProgressMod.Error(
-                "Could not find call to ModContentPack.ReloadContentInt in ModContentPack; "
-                    + "reloading content will be done without showing detailed progress."
-            );
-        }
-        else
-        {
-            (reloadContentIntMethod, reloadContentIntmodContentPackField) = methodFields.First();
-        }
+        var staticConstructorOnStartupUtilityCallAllMethod =
+            StaticConstructorOnStartupUtilityCallAllMethod.Value;
+        var (reloadContentIntMethod, reloadContentIntmodContentPackField) =
+            ReloadContentIntMethod.Value;
 
         LongEventHandler.executingToExecuteWhenFinished = true;
         if (LongEventHandler.toExecuteWhenFinished.Count > 0)
@@ -237,43 +276,27 @@ internal static partial class LongEventHandler_ExecuteToExecuteWhenFinished_Patc
                 );
             }
             yield return null;
-            DeepProfiler.Start(label);
+
+            // The label never matches a loading stage, so don't make our DeepProfiler.Start
+            // patch search for one.
+            DeepProfiler_Start_Patches.Suppress = true;
             try
             {
-                var methodAssembly = toExecuteWhenFinished.Method.DeclaringType.Assembly;
-                var assemblyMod = Utilities.FindModByAssembly(methodAssembly);
-                var isBaseGame = methodAssembly.FullName.StartsWith(
-                    "Assembly-CSharp",
-                    StringComparison.Ordinal
-                );
-                if (isBaseGame)
+                DeepProfiler.Start(label);
+            }
+            finally
+            {
+                DeepProfiler_Start_Patches.Suppress = false;
+            }
+            try
+            {
+                if (Profiler.Enabled)
                 {
-                    StartupImpactProfilerUtil.StartBaseGameProfiler(
-                        $"LoadingProgress.StartupImpact.ExecuteToExecuteWhenFinished|{label}"
-                    );
+                    RunProfiled(toExecuteWhenFinished, label);
                 }
                 else
                 {
-                    StartupImpactProfilerUtil.StartModProfiler(
-                        assemblyMod,
-                        $"LoadingProgress.StartupImpact.ExecuteToExecuteWhenFinished|{label}"
-                    );
-                }
-
-                toExecuteWhenFinished();
-
-                if (isBaseGame)
-                {
-                    StartupImpactProfilerUtil.StopBaseGameProfiler(
-                        $"LoadingProgress.StartupImpact.ExecuteToExecuteWhenFinished|{label}"
-                    );
-                }
-                else
-                {
-                    StartupImpactProfilerUtil.StopModProfiler(
-                        assemblyMod,
-                        $"LoadingProgress.StartupImpact.ExecuteToExecuteWhenFinished|{label}"
-                    );
+                    toExecuteWhenFinished();
                 }
             }
             catch (Exception ex)
