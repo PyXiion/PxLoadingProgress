@@ -1,3 +1,5 @@
+using RimWorld.IO;
+
 namespace ru.pyxiion.modrim.LoadingProgress;
 
 internal static class Translations
@@ -22,14 +24,16 @@ internal static class Translations
 
         if (!_englishTranslationsLoaded)
         {
-            var englishLanguageDirectory = Path.Join(
-                Path.Join(
-                    Path.Join(LoadingProgressMod.instance.Content.RootDir, "Common"),
-                    "Languages",
-                    LanguageDatabase.DefaultLangFolderName
-                ),
-                "Keyed"
-            );
+            var englishLanguageDirectory = AbstractFilesystem
+                .GetDirectory(
+                    Path.Combine(
+                        LoadingProgressMod.instance.Content.RootDir,
+                        "Common",
+                        "Languages",
+                        LanguageDatabase.DefaultLangFolderName
+                    )
+                )
+                .GetDirectory("Keyed");
             LoadLanguage(ref EnglishTranslationValues, englishLanguageDirectory);
             _englishTranslationsLoaded = true;
         }
@@ -37,24 +41,36 @@ internal static class Translations
         if (!_activeLanguageTranslationsLoaded && Prefs.LangFolderName != "English")
         {
             var languageFolderName = Prefs.LangFolderName;
+            // Like RimWorld's own LoadedLanguage.AllDirectories, accept both the canonical
+            // folder name (e.g. "Polish (Polski)") and the legacy one (e.g. "Polish").
+            var parenIndex = languageFolderName.IndexOf('(', StringComparison.Ordinal);
+            var legacyLanguageFolderName =
+                parenIndex > 0 ? languageFolderName[..parenIndex].Trim() : languageFolderName;
+            string[] candidateFolderNames =
+                languageFolderName == legacyLanguageFolderName
+                    ? [languageFolderName]
+                    : [languageFolderName, legacyLanguageFolderName];
             foreach (var mod in LoadedModManager.RunningMods)
             {
                 foreach (var loadFolder in mod.foldersToLoadDescendingOrder)
                 {
-                    var languageDirectory = Path.Join(
-                        Path.Join(loadFolder, "Languages", languageFolderName),
-                        "Keyed"
-                    );
-                    if (Directory.Exists(languageDirectory))
+                    foreach (var candidateFolderName in candidateFolderNames)
                     {
+                        var languageDirectory = AbstractFilesystem
+                            .GetDirectory(Path.Join(loadFolder, "Languages", candidateFolderName))
+                            .GetDirectory("Keyed");
                         LoadLanguage(ref ActiveLanguageTranslationValues, languageDirectory);
                         if (ActiveLanguageTranslationValues is not null)
                         {
                             LoadingProgressMod.Message(
-                                $"Loaded translations for {languageFolderName} from {mod.Name} from {languageDirectory}."
+                                $"Loaded translations for {languageFolderName} from {mod.Name} from {languageDirectory.FullPath}."
                             );
                             break;
                         }
+                    }
+                    if (ActiveLanguageTranslationValues is not null)
+                    {
+                        break;
                     }
                 }
                 if (ActiveLanguageTranslationValues is not null)
@@ -91,18 +107,19 @@ internal static class Translations
 
     private static void LoadLanguage(
         ref Dictionary<string, string>? languageDictionary,
-        string languageDirectory
+        VirtualDirectory languageDirectory
     )
     {
-        if (!Directory.Exists(languageDirectory))
+        // Goes through RimWorld's virtual filesystem so translations packed as .tar are found too.
+        if (!languageDirectory.Exists)
         {
             return;
         }
-        foreach (var file in Directory.GetFiles(languageDirectory, "*.xml"))
+        foreach (var file in languageDirectory.GetFiles("*.xml", SearchOption.AllDirectories))
         {
             try
             {
-                var translationContent = File.ReadAllText(file);
+                var translationContent = file.ReadAllText();
                 if (!translationContent.Contains("LoadingProgress.", StringComparison.Ordinal))
                 {
                     continue;
@@ -116,7 +133,7 @@ internal static class Translations
             catch (Exception e)
             {
                 // A malformed language file shouldn't take down the loading screen.
-                LoadingProgressMod.Warning($"Failed to load translations from {file}: {e}");
+                LoadingProgressMod.Warning($"Failed to load translations from {file.FullPath}: {e}");
             }
         }
     }

@@ -7,8 +7,9 @@ internal sealed class StaticConstructorOnStartupUtilityReplacement
     internal static void Interject() =>
         Utilities.LongEventHandlerPrependQueue(() =>
         {
-            LongEventHandler.QueueLongEvent(CallAll(), "LoadingProgress.CallAll");
-            // When we're done, resume the original ExecuteToExecuteWhenFinished method.
+            LongEventHandler.QueueLongEvent(CallAllAndRest(), "LoadingProgress.CallAll");
+            // When we're done, resume the original ExecuteToExecuteWhenFinished method to
+            // process whatever toExecuteWhenFinished entries are left.
             LongEventHandler.QueueLongEvent(
                 LongEventHandler_ExecuteToExecuteWhenFinished_Patches.ExecuteToExecuteWhenFinished(),
                 "LoadingProgress.ExecuteToExecuteWhenFinished"
@@ -17,7 +18,13 @@ internal sealed class StaticConstructorOnStartupUtilityReplacement
 
     internal static bool _callAllCalled;
 
-    private static IEnumerable CallAll()
+    // Vanilla's PlayDataLoader.DoPlayLoad() bundles StaticConstructorOnStartupUtility.CallAll(),
+    // FloatMenuMakerMap.Init(), GlobalTextureAtlasManager.BakeStaticAtlases(), cache clearing,
+    // a forced GC.Collect() and Resources.UnloadUnusedAssets() into a single ExecuteWhenFinished
+    // delegate. We run each of those steps here ourselves, yielding between them so the loading
+    // screen can repaint, and the original closure is removed from toExecuteWhenFinished (see
+    // LongEventHandler_ExecuteToExecuteWhenFinished_Patches) so it doesn't run a second time.
+    private static IEnumerable CallAllAndRest()
     {
         _callAllCalled = true;
         DeepProfiler.Start("StaticConstructorOnStartupUtilityReplacement.CallAll()");
@@ -54,6 +61,53 @@ internal sealed class StaticConstructorOnStartupUtilityReplacement
         }
         DeepProfiler.End();
         StaticConstructorOnStartupUtility.coreStaticAssetsLoaded = true;
+
+        // Run the real StaticConstructorOnStartupUtility.CallAll() too, purely so third-party
+        // Harmony patches on it still fire. The constructors themselves are no-ops the second
+        // time (RunClassConstructor does nothing for an already-initialized type).
+        LoadingProgressWindow.SetCurrentLoadingActivityRaw(string.Empty);
+        yield return null;
+        DeepProfiler.Start("Static constructor calls");
+        try
+        {
+            StaticConstructorOnStartupUtility.CallAll();
+            if (Prefs.DevMode)
+            {
+                StaticConstructorOnStartupUtility.ReportProbablyMissingAttributes();
+            }
+        }
+        finally
+        {
+            DeepProfiler.End();
+        }
+        yield return null;
+
+        FloatMenuMakerMap.Init();
+        yield return null;
+
+        DeepProfiler.Start("Atlas baking.");
+        try
+        {
+            GlobalTextureAtlasManager.BakeStaticAtlases();
+        }
+        finally
+        {
+            DeepProfiler.End();
+        }
+        yield return null;
+
+        DeepProfiler.Start("Garbage Collection");
+        try
+        {
+            RimWorld.IO.AbstractFilesystem.ClearAllCache();
+            GC.Collect(int.MaxValue, GCCollectionMode.Forced);
+            _ = Resources.UnloadUnusedAssets();
+        }
+        finally
+        {
+            DeepProfiler.End();
+        }
+        yield return null;
     }
 }
 

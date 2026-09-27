@@ -14,4 +14,5 @@ internal static class LoadingDataTracker
 
     internal static Def? LastDef;
     internal static int WantedRefApplyCount;
+    internal static int ShortHashesGivenCount;
 }

@@ -151,7 +151,9 @@ internal static partial class LongEventHandler_ExecuteToExecuteWhenFinished_Patc
                 StaticConstructorOnStartupUtilityReplacement.Interject();
 
                 DeepProfiler.End();
-                actions.RemoveRange(0, i);
+                // Remove index i too: CallAllAndRest() runs every step of this closure itself,
+                // so it must not run a second time when we resume.
+                actions.RemoveRange(0, i + 1);
                 LongEventHandler.executingToExecuteWhenFinished = false;
                 yield break;
             }
@@ -243,6 +245,10 @@ internal static partial class LongEventHandler_ExecuteToExecuteWhenFinished_Patc
             LoadingDataTracker.Current = modContentPack.Name;
             LoadingProgressWindow.CurrentLoadingActivity = $"LP.Reload {value}";
             LoadingProgressWindow.StageProgress = (progress.Completed + 1, progress.Total);
+            // These labels usually sit right in front of a slow synchronous step (a mod's
+            // texture/audio/asset reload), so they need to land on screen even if it means
+            // cutting the current 0.1s batch short.
+            LongEventHandler_UpdateCurrentEnumeratorEvent_Patches.RequestImmediateRepaint();
             yield return value;
             progress.Completed++;
         }
